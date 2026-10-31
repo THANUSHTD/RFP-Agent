@@ -6,7 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.db import get_db
-from backend.app.models import Clarification, Session as SessionModel
+from backend.app.models import Clarification
+from backend.app.models import Session as SessionModel
 from backend.app.schemas import ClarificationOut
 
 router = APIRouter(prefix="/sessions", tags=["clarifications"])

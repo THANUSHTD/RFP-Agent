@@ -10,19 +10,19 @@ import sys
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.app.config import get_settings
-from backend.app.db import init_db
+from backend.app.api.chat import router as chat_router
+from backend.app.api.clarifications import router as clarifications_router
+from backend.app.api.export import router as export_router
+from backend.app.api.format_rules import router as format_rules_router
 
 # Import all routers
 from backend.app.api.health import router as health_router
-from backend.app.api.sessions import router as sessions_router
-from backend.app.api.rfp import router as rfp_router
-from backend.app.api.questions import router as questions_router
-from backend.app.api.chat import router as chat_router
-from backend.app.api.clarifications import router as clarifications_router
 from backend.app.api.kb import router as kb_router
-from backend.app.api.export import router as export_router
-from backend.app.api.format_rules import router as format_rules_router
+from backend.app.api.questions import router as questions_router
+from backend.app.api.rfp import router as rfp_router
+from backend.app.api.sessions import router as sessions_router
+from backend.app.config import get_settings
+from backend.app.db import init_db
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 

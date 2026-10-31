@@ -8,9 +8,10 @@ technical architecture, commercial/legal (flagged), and gap questions (clarifica
 All content is SYNTHETIC. No real data.
 """
 from pathlib import Path
+
 from docx import Document
-from docx.shared import Pt, RGBColor, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Inches, Pt, RGBColor
 
 OUTPUT_DIR = Path("data/sample_rfp")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

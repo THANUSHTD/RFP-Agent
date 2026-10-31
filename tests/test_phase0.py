@@ -5,19 +5,20 @@ These tests do NOT require an OpenAI key or a running server.
 They verify the foundational plumbing: settings loading, DB table creation,
 triage enum values, and API schema validation.
 """
-import asyncio
-import json
 import pytest
 
 from backend.app.config import Settings
 from backend.app.models import (
-    AnswerStatus, ClarificationStatus, OwnerDept,
-    QuestionCategory, QuestionKind, QuestionStatus, SourceType,
+    OwnerDept,
+    QuestionCategory,
+    QuestionStatus,
+    SourceType,
 )
 from backend.app.schemas import (
-    AnswerPatch, ApproveRequest, SessionCreate,
+    AnswerPatch,
+    ApproveRequest,
+    SessionCreate,
 )
-
 
 # ── Config tests ──────────────────────────────────────────────────────────────
 
@@ -80,8 +81,9 @@ async def test_db_init_creates_tables():
 
     # Re-import to pick up the overridden env var
     from importlib import reload
-    import backend.app.db as db_module
+
     import backend.app.config as cfg_module
+    import backend.app.db as db_module
 
     # Reset LRU cache so the patched env is read
     cfg_module.get_settings.cache_clear()

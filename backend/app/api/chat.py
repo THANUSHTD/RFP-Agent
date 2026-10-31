@@ -8,7 +8,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.db import get_db
-from backend.app.models import ChatMessage, Session as SessionModel
+from backend.app.models import ChatMessage
+from backend.app.models import Session as SessionModel
 from backend.app.schemas import ChatMessageIn, ChatMessageOut
 
 router = APIRouter(prefix="/sessions", tags=["chat"])

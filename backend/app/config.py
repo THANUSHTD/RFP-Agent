@@ -5,6 +5,7 @@ Uses pydantic-settings so every field is typed and validated at startup.
 Never hardcode model names or thresholds here; they all come from .env.
 """
 from functools import lru_cache
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 

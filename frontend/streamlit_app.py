@@ -1,10 +1,12 @@
-﻿"""
+"""
 streamlit_app.py — Streamlit frontend for the RFP Agent.
 
 Phase 0: Shell with sidebar, session management, and a basic chat area.
 The app calls the FastAPI backend over HTTP using httpx.
 Streamlit never touches the DB, vector store, or LLM directly.
 """
+import os
+
 import httpx
 import streamlit as st
 
@@ -17,8 +19,8 @@ st.set_page_config(
 )
 
 # ── Backend URL ───────────────────────────────────────────────────────────────
-import os
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -102,14 +104,33 @@ with st.sidebar:
     st.subheader("Knowledge Base")
     kb_docs = api_get("/kb/documents") or []
     if kb_docs:
-        st.metric("Documents", len(kb_docs))
+        st.metric("Documents Ingested", len(kb_docs))
         by_type: dict[str, int] = {}
+        total_chunks = 0
         for d in kb_docs:
             by_type[d["source_type"]] = by_type.get(d["source_type"], 0) + 1
+            total_chunks += d.get("chunk_count", 0)
+        st.caption(f"**Total chunks indexed:** {total_chunks}")
         for stype, count in by_type.items():
-            st.caption(f"  {stype}: {count}")
+            st.caption(f"• `{stype}`: {count} docs")
+
+        with st.expander("📄 View Ingested Docs", expanded=False):
+            for d in kb_docs:
+                redacted_flag = "🔒 [REDACTED]" if d.get("redacted") else "📗 [CLEAN]"
+                st.markdown(
+                    f"**{d['document_name']}**  \n"
+                    f"_{d['source_type']}_ · v{d.get('product_version', '3.0.0')} · {redacted_flag} ({d.get('chunk_count', 0)} chunks)"
+                )
     else:
-        st.caption("KB empty — run `python scripts/ingest_kb.py`")
+        st.caption("KB empty — click Ingest KB below.")
+
+    if st.button("🔄 Ingest / Refresh KB", use_container_width=True):
+        with st.spinner("Ingesting synthetic knowledge base..."):
+            res = api_post("/kb/ingest")
+            if res:
+                st.success(res.get("message", "Ingestion completed!"))
+                st.rerun()
+
 
 
 # ── Main area ─────────────────────────────────────────────────────────────────
@@ -166,11 +187,13 @@ with tab_chat:
                     st.error(f"Upload failed: {exc}")
 
         if st.button("🔍 Analyze RFP", key="analyze_btn", help="Starts the analysis pipeline"):
-            result = api_post(
-                f"/sessions/{st.session_state.active_session_id}/analyze"
-            )
-            if result:
-                st.info(result.get("message", "Analysis started."))
+            with st.spinner("Analyzing RFP structure, extracting questions, and detecting format rules..."):
+                result = api_post(
+                    f"/sessions/{st.session_state.active_session_id}/analyze"
+                )
+                if result:
+                    st.success(result.get("message", "Analysis complete!"))
+                    st.rerun()
 
     st.divider()
 
@@ -192,54 +215,193 @@ with tab_chat:
             with st.chat_message("assistant"):
                 st.markdown(result["content"])
 
-# ── Questions tab (Phase 0 stub) ──────────────────────────────────────────────
+# ── Questions tab ─────────────────────────────────────────────────────────────
 with tab_questions:
-    st.subheader("Extracted Questions")
+    st.subheader("Extracted Requirements & Questions")
     questions = api_get(f"/sessions/{st.session_state.active_session_id}/questions") or []
     if not questions:
-        st.info("No questions yet. Upload and analyze an RFP first.")
+        st.info("No questions extracted yet. Upload an RFP and click **🔍 Analyze RFP** in the Chat tab.")
     else:
-        approved = sum(1 for q in questions if q["status"] == "approved")
-        pending = len(questions) - approved
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Total", len(questions))
-        col2.metric("✅ Approved", approved)
-        col3.metric("⏳ Pending", pending)
-        st.dataframe(
-            [{
+        # Metrics row
+        total_q = len(questions)
+        flagged_q = sum(1 for q in questions if q["status"] == "flagged_owner")
+        pending_q = sum(1 for q in questions if q["status"] == "pending")
+        approved_q = sum(1 for q in questions if q["status"] == "approved")
+
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Total Questions", total_q)
+        c2.metric("🏷️ Flagged to Owner", flagged_q)
+        c3.metric("⏳ Ready to Draft", pending_q)
+        c4.metric("✅ Approved", approved_q)
+
+        st.divider()
+
+        # Filters
+        f_col1, f_col2, f_col3 = st.columns(3)
+        categories = ["All"] + sorted(list({q["category"] for q in questions if q.get("category")}))
+        owners = ["All"] + sorted(list({q["owner"] for q in questions if q.get("owner")}))
+        statuses = ["All"] + sorted(list({q["status"] for q in questions if q.get("status")}))
+
+        sel_cat = f_col1.selectbox("Filter Category", categories)
+        sel_owner = f_col2.selectbox("Filter Owner", owners)
+        sel_status = f_col3.selectbox("Filter Status", statuses)
+
+        filtered = questions
+        if sel_cat != "All":
+            filtered = [q for q in filtered if q.get("category") == sel_cat]
+        if sel_owner != "All":
+            filtered = [q for q in filtered if q.get("owner") == sel_owner]
+        if sel_status != "All":
+            filtered = [q for q in filtered if q.get("status") == sel_status]
+
+        st.caption(f"Showing **{len(filtered)}** of {total_q} questions")
+
+        table_data = []
+        for q in filtered:
+            status_badge = "🏷️ Flagged" if q["status"] == "flagged_owner" else ("✅ Approved" if q["status"] == "approved" else "⏳ Pending")
+            owner_label = f"👤 {q['owner']}" if q.get("owner") else "—"
+            table_data.append({
                 "No.": q["number"],
-                "Status": q["status"],
-                "Category": q["category"],
-                "Mandatory": "✓" if q["mandatory"] else "",
-                "Question": q["text"][:120] + "..." if len(q["text"]) > 120 else q["text"],
-            } for q in questions],
+                "Category": q.get("category", "").upper(),
+                "Owner": owner_label,
+                "Status": status_badge,
+                "Mandatory": "★ Yes" if q["mandatory"] else "No",
+                "Question": q["text"],
+            })
+
+        st.dataframe(
+            table_data,
             use_container_width=True,
+            column_config={
+                "Question": st.column_config.TextColumn("Requirement / Question", width="large"),
+            },
         )
 
-# ── Clarifications tab (Phase 0 stub) ────────────────────────────────────────
+        with st.expander("🔎 Question Inspector & Draft Review", expanded=True):
+            q_nums = [q["number"] for q in filtered]
+            if q_nums:
+                chosen_num = st.selectbox("Select question to inspect and review draft:", q_nums)
+                chosen = next((q for q in filtered if q["number"] == chosen_num), None)
+                if chosen:
+                    st.markdown(f"### Requirement `{chosen['number']}` ({chosen.get('category', '').upper()})")
+                    st.info(chosen["text"])
+
+                    # Fetch active draft answer
+                    ans = api_get(f"/questions/{chosen['id']}/answer")
+                    if ans:
+                        st.markdown("#### Draft Answer")
+                        conf = ans.get("confidence", 0.0)
+                        conf_col, status_col = st.columns([2, 1])
+                        with conf_col:
+                            st.progress(conf, text=f"Grounded Confidence Score: {int(conf * 100)}%")
+                        with status_col:
+                            st.caption(f"Status: **{ans.get('status', 'draft').upper()}** (v{ans.get('version', 1)})")
+
+                        # Staleness alerts
+                        import json
+                        stales = json.loads(ans.get("stale_warnings_json", "[]"))
+                        for sw in stales:
+                            st.warning(f"⚠️ **Staleness Notice:** {sw}")
+
+                        # Editable draft text
+                        edited_text = st.text_area(
+                            "Review & Edit Draft (Human-in-the-Loop):",
+                            value=ans.get("text", ""),
+                            height=200,
+                            key=f"edit_ans_{chosen['id']}_{ans.get('version', 1)}",
+                        )
+
+                        # Action buttons
+                        btn_c1, btn_c2 = st.columns([1, 1])
+                        with btn_c1:
+                            if st.button("💾 Save Edits (New Version)", key=f"save_{chosen['id']}"):
+                                patch_res = httpx.patch(
+                                    f"{BACKEND_URL}/questions/{chosen['id']}/answer",
+                                    json={"text": edited_text},
+                                )
+                                if patch_res.status_code == 200:
+                                    st.success("Draft updated with new version!")
+                                    st.rerun()
+                        with btn_c2:
+                            if ans.get("status") != "approved":
+                                if st.button("✅ Approve Answer", type="primary", key=f"appr_{chosen['id']}"):
+                                    appr_res = httpx.post(
+                                        f"{BACKEND_URL}/questions/{chosen['id']}/approve",
+                                        json={"confirm": True},
+                                    )
+                                    if appr_res.status_code == 200:
+                                        st.success("Answer approved by Sales Engineer!")
+                                        st.rerun()
+                            else:
+                                st.success(f"Approved on {ans.get('approved_at', 'recently')}")
+
+                        # Citations section
+                        cites = json.loads(ans.get("citations_json", "[]"))
+                        if cites:
+                            st.markdown("##### Grounded Citations")
+                            for idx, c in enumerate(cites):
+                                with st.expander(f"📌 Citation [{c.get('chunk_id')}]: {c.get('document')}"):
+                                    st.caption(f"Source Type: `{c.get('source_type')}`")
+                                    st.markdown(f"> *{c.get('snippet')}*")
+                        elif chosen.get("owner"):
+                            st.info(f"This question is assigned to the **{chosen['owner']}** department.")
+                        else:
+                            st.caption("No knowledge base citations linked to this draft.")
+                    else:
+                        st.info("No draft answer generated yet. Run analysis to draft answers.")
+
+# ── Clarifications tab ────────────────────────────────────────────────────────
 with tab_clarifications:
-    st.subheader("Clarification List")
+    st.subheader("Clarification List (Low Confidence / Insufficient Sources)")
     clarifs = api_get(
         f"/sessions/{st.session_state.active_session_id}/clarifications"
     ) or []
     if not clarifs:
-        st.info("No clarifications yet.")
+        st.success("✅ No open clarifications! All questions either had grounded knowledge sources or were assigned to department owners.")
     else:
+        st.warning(f"There are **{len(clarifs)}** items requiring Sales Engineer attention:")
         for c in clarifs:
-            with st.expander(f"[{c['status'].upper()}] {c['text'][:80]}"):
-                st.write(c["text"])
-                st.caption(f"Reason: {c['reason']}")
+            with st.expander(f"⚠️ [{c['status'].upper()}] {c['text'][:80]}"):
+                st.markdown(f"**Question / Item:** {c['text']}")
+                st.markdown(f"**Reason:** {c['reason']}")
+                st.caption(f"Created: {c['created_at']}")
 
-# ── Format Rules tab (Phase 0 stub) ──────────────────────────────────────────
+
+# ── Format Rules tab ──────────────────────────────────────────────────────────
 with tab_format:
-    st.subheader("Format Rules")
-    rules = api_get(f"/sessions/{st.session_state.active_session_id}/format-rules")
-    if rules is None:
-        st.info("No format rules extracted yet. Analyze an RFP first.")
+    st.subheader("Extracted Response Guidelines & Format Rules")
+    rules_obj = api_get(f"/sessions/{st.session_state.active_session_id}/format-rules")
+    if rules_obj is None:
+        st.info("No format rules extracted yet. Upload an RFP and click **🔍 Analyze RFP** first.")
     else:
         import json
-        st.json(json.loads(rules["rules_json"]))
-        st.caption(f"Confirmed by SE: {'✅' if rules['confirmed_by_se'] else '❌'}")
+        rules_data = json.loads(rules_obj["rules_json"]) if isinstance(rules_obj["rules_json"], str) else rules_obj["rules_json"]
+
+        col_r1, col_r2 = st.columns(2)
+        with col_r1:
+            st.markdown(f"**Word Limit per Answer:** `{rules_data.get('word_limit', 'None specified')} words`")
+            st.markdown(f"**Numbering Scheme:** `{rules_data.get('numbering_scheme', 'exact')}`")
+            st.markdown(f"**Section Headings Required:** `{'Yes' if rules_data.get('section_headings') else 'No'}`")
+        with col_r2:
+            st.markdown(f"**File Naming Template:** `{rules_data.get('file_naming', 'Standard')}`")
+            st.markdown(f"**Language & Tone:** `{rules_data.get('language', 'English')}`")
+            st.markdown(f"**Compliance Matrix Required:** `{'Yes' if rules_data.get('compliance_matrix_required') else 'No'}`")
+
+        is_confirmed = rules_obj.get("confirmed_by_se", False)
+        st.caption(f"Status: **{'Confirmed by Sales Engineer ✅' if is_confirmed else 'Pending SE Confirmation ⚠️'}**")
+
+        if not is_confirmed:
+            if st.button("✅ Confirm Format Rules", use_container_width=True):
+                r = httpx.put(
+                    f"{BACKEND_URL}/sessions/{st.session_state.active_session_id}/format-rules",
+                    json={"rules": rules_data, "confirmed_by_se": True},
+                )
+                if r.status_code == 200:
+                    st.success("Format rules confirmed!")
+                    st.rerun()
+        else:
+            st.success("These formatting rules will be enforced during answer drafting and DOCX/XLSX export.")
+
 
 # ── Export tab (Phase 0 stub) ─────────────────────────────────────────────────
 with tab_export:

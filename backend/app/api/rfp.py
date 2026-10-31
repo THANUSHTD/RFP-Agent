@@ -1,11 +1,10 @@
-﻿"""
+"""
 api/rfp.py — RFP document upload and analysis endpoints.
 
 Upload validates file type and size. Analysis is a stub in Phase 0;
 the full LangGraph pipeline is wired up in Phase 2/3.
 """
 import logging
-import os
 import re
 from pathlib import Path
 
@@ -14,7 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.config import get_settings
 from backend.app.db import get_db
-from backend.app.models import RFPDocument, Session as SessionModel
+from backend.app.models import RFPDocument
+from backend.app.models import Session as SessionModel
 from backend.app.schemas import OKResponse, RFPDocumentOut
 
 logger = logging.getLogger(__name__)
@@ -54,12 +54,15 @@ async def upload_rfp(
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    # 2. Validate content type
-    if file.content_type not in ALLOWED_TYPES:
+    # 2. Validate content type or file extension
+    ext = Path(file.filename or "").suffix.lower()
+    is_valid = file.content_type in ALLOWED_TYPES or ext in (".pdf", ".docx")
+    if not is_valid:
         raise HTTPException(
             status_code=415,
             detail="Only PDF and DOCX files are accepted.",
         )
+
 
     # 3. Read and check size
     max_bytes = settings.max_upload_mb * 1024 * 1024
@@ -98,18 +101,26 @@ async def upload_rfp(
 @router.post(
     "/{session_id}/analyze",
     response_model=OKResponse,
-    summary="Trigger RFP analysis (stub — full impl in Phase 3)",
+    summary="Trigger LangGraph RFP analysis and answer drafting pipeline",
 )
 async def analyze_rfp(
     session_id: int,
     db: AsyncSession = Depends(get_db),
 ) -> OKResponse:
-    """Stub endpoint: will start the LangGraph analysis pipeline.
+    """Execute LangGraph pipeline: parse structure, extract questions, detect format rules, and draft answers."""
+    from backend.app.agents.analyze_graph import analysis_graph
 
-    In Phase 0 this just validates that the session has an uploaded RFP.
-    """
-    session = await db.get(SessionModel, session_id)
-    if session is None:
-        raise HTTPException(status_code=404, detail="Session not found")
+    state = await analysis_graph.ainvoke({"session_id": session_id})
+    summary = state.get("summary", {})
+    draft_summary = state.get("draft_summary", {})
 
-    return OKResponse(message="Analysis pipeline not yet implemented (Phase 0 stub).")
+    return OKResponse(
+        message=(
+            f"Analysis complete: {summary.get('total_questions', 0)} questions processed. "
+            f"Drafted: {draft_summary.get('answered', 0)} answers, "
+            f"{draft_summary.get('clarifications', 0)} clarifications, "
+            f"{draft_summary.get('flagged', 0)} flagged to department owners."
+        )
+    )
+
+

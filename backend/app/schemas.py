@@ -1,4 +1,4 @@
-﻿"""
+"""
 schemas.py — Pydantic v2 request / response schemas.
 
 These are separate from the SQLAlchemy ORM models (models.py).
@@ -10,7 +10,6 @@ from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
-
 
 # ── Shared ───────────────────────────────────────────────────────────────────
 
@@ -165,6 +164,25 @@ class KBDocumentOut(BaseModel):
     redacted: bool
     chunk_count: int
     ingested_at: datetime
+
+
+class KBSearchRequest(BaseModel):
+    query: str = Field(..., min_length=2)
+    top_k: int = 5
+    source_type: str | None = None
+    product_version: str | None = None
+
+
+class KBChunkResult(BaseModel):
+    chunk_id: str
+    document_name: str
+    source_type: str
+    product: str | None = None
+    product_version: str | None = None
+    doc_date: str | None = None
+    snippet: str
+    score: float
+    stale_warning: str | None = None
 
 
 # ── Analysis progress ─────────────────────────────────────────────────────────

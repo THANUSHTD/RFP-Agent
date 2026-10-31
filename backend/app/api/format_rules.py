@@ -3,12 +3,14 @@ api/format_rules.py — Format rules endpoints (Phase 0 stub).
 """
 import json
 from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.db import get_db
-from backend.app.models import FormatRule, Session as SessionModel
+from backend.app.models import FormatRule
+from backend.app.models import Session as SessionModel
 from backend.app.schemas import FormatRulesOut, FormatRulesPut
 
 router = APIRouter(prefix="/sessions", tags=["format_rules"])

@@ -8,7 +8,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.db import get_db
-from backend.app.models import Answer, Question, Session as SessionModel
+from backend.app.models import Answer, Question
+from backend.app.models import Session as SessionModel
 from backend.app.schemas import AnswerOut, AnswerPatch, ApproveRequest, OKResponse, QuestionOut
 
 router = APIRouter(tags=["questions"])
