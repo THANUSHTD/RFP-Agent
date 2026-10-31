@@ -1,0 +1,43 @@
+﻿# Environment
+.env
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# Database & vector store
+*.db
+*.sqlite
+*.sqlite3
+chroma_db/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test / lint cache
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+
+# Uploads (never commit real RFPs)
+uploads/
+
+# Exports (generated files)
+exports/

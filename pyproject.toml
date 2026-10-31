@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rfp-agent"
+version = "0.1.0"
+description = "RFP Agent for Islamic Banking and Lending"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi==0.115.0",
+    "uvicorn[standard]==0.30.6",
+    "pydantic==2.9.2",
+    "pydantic-settings==2.5.2",
+    "python-dotenv==1.0.1",
+    "sqlalchemy==2.0.35",
+    "aiosqlite==0.20.0",
+    "openai==1.51.0",
+    "tenacity==9.0.0",
+    "langgraph==0.2.38",
+    "langgraph-checkpoint-sqlite==2.0.1",
+    "chromadb==0.5.12",
+    "rank_bm25==0.2.2",
+    "pymupdf==1.24.11",
+    "pdfplumber==0.11.4",
+    "python-docx==1.1.2",
+    "openpyxl==3.1.5",
+    "httpx==0.27.2",
+    "streamlit==1.39.0",
+    "python-multipart==0.0.9",
+    "tiktoken==0.7.0",
+    "numpy==1.26.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.3.3",
+    "pytest-asyncio==0.24.0",
+    "ruff==0.6.9",
+    "httpx==0.27.2",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["backend*", "frontend*"]
