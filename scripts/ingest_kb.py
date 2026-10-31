@@ -4,6 +4,7 @@ scripts/ingest_kb.py — CLI utility to run Knowledge Base ingestion.
 Usage:
     python scripts/ingest_kb.py [--kb-dir data/kb_sample]
 """
+
 import argparse
 import asyncio
 import os

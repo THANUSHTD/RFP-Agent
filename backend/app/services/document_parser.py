@@ -10,6 +10,7 @@ Provides:
 - Frontmatter metadata extraction (for structured KB docs)
 - Hierarchical semantic chunking preserving document headers
 """
+
 import os
 import re
 from dataclasses import dataclass
@@ -121,10 +122,10 @@ def chunk_text(
 
     # Split into sections based on markdown headers or double newlines
     header_pattern = re.compile(r"(^(?:#{1,4}\s+.+|[A-Z0-9\.\-\s]{3,}:)$)", re.MULTILINE)
-    
+
     sections = []
     current_title = os.path.splitext(document_name)[0]
-    
+
     lines = text.splitlines()
     current_lines: list[str] = []
 

@@ -1,9 +1,10 @@
-﻿"""
+"""
 models.py — SQLAlchemy ORM models (data model / schema definition).
 
 All tables documented in the brief are defined here.
 We use SQLAlchemy 2.0-style mapped_column / Mapped for full typing support.
 """
+
 import json
 from datetime import datetime
 from enum import Enum as PyEnum
@@ -24,10 +25,12 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 class Base(DeclarativeBase):
     """Shared declarative base for all ORM models."""
+
     pass
 
 
 # ── Enums ────────────────────────────────────────────────────────────────────
+
 
 class QuestionKind(str, PyEnum):
     narrative = "narrative"
@@ -78,8 +81,10 @@ class ClarificationStatus(str, PyEnum):
 
 # ── Tables ───────────────────────────────────────────────────────────────────
 
+
 class Session(Base):
     """One RFP engagement / workspace."""
+
     __tablename__ = "sessions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -97,6 +102,7 @@ class Session(Base):
 
 class RFPDocument(Base):
     """Uploaded RFP file attached to a session."""
+
     __tablename__ = "rfp_documents"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -113,6 +119,7 @@ class RFPDocument(Base):
 
 class Section(Base):
     """A top-level section extracted from an RFP."""
+
     __tablename__ = "sections"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -127,6 +134,7 @@ class Section(Base):
 
 class Question(Base):
     """An individual requirement / question extracted from the RFP."""
+
     __tablename__ = "questions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -151,6 +159,7 @@ class Answer(Base):
 
     Multiple versions can exist per question; the latest is the active draft.
     """
+
     __tablename__ = "answers"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -181,6 +190,7 @@ class Answer(Base):
 
 class Clarification(Base):
     """A question the agent cannot answer; needs human input."""
+
     __tablename__ = "clarifications"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -201,6 +211,7 @@ class Clarification(Base):
 
 class ChatMessage(Base):
     """A message in the SE-agent chat for a session."""
+
     __tablename__ = "chat_messages"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -214,6 +225,7 @@ class ChatMessage(Base):
 
 class KBDocument(Base):
     """Metadata record for each document ingested into the knowledge base."""
+
     __tablename__ = "kb_documents"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -230,6 +242,7 @@ class KBDocument(Base):
 
 class FormatRule(Base):
     """Extracted formatting rules for a session, stored as JSON."""
+
     __tablename__ = "format_rules"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -243,6 +256,7 @@ class FormatRule(Base):
 
 class LLMCall(Base):
     """Audit log of every LLM call — used for AI Disclosure reporting."""
+
     __tablename__ = "llm_calls"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

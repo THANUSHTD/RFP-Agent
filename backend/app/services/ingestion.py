@@ -9,6 +9,7 @@ Pipeline workflow:
 5. Index chunks into ChromaDB and build BM25 sparse index.
 6. Record or update KBDocument entries in SQLite.
 """
+
 import logging
 import os
 from datetime import datetime
@@ -99,9 +100,7 @@ async def ingest_file(
     await retriever.add_chunks(chroma_payload)
 
     # Check if KBDocument already exists in DB
-    existing = await db.execute(
-        select(KBDocument).where(KBDocument.document_name == filename)
-    )
+    existing = await db.execute(select(KBDocument).where(KBDocument.document_name == filename))
     kb_doc = existing.scalar_one_or_none()
 
     if kb_doc is None:

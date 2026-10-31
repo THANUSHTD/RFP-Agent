@@ -8,6 +8,7 @@ Orchestrates:
 4. Enforcing triage & department owner routing (Pricing, Legal, Delivery)
 5. Persisting Sections, Questions, FormatRules, and summary ChatMessage
 """
+
 import json
 import logging
 from typing import Any
@@ -92,12 +93,8 @@ async def run_rfp_analysis(session_id: int, db: AsyncSession) -> dict[str, Any]:
     sections = extract_sections_and_questions(raw_text)
 
     # Clear previously extracted questions and sections for this document
-    await db.execute(
-        delete(Question).where(Question.session_id == session_id)
-    )
-    await db.execute(
-        delete(Section).where(Section.rfp_document_id == doc.id)
-    )
+    await db.execute(delete(Question).where(Question.session_id == session_id))
+    await db.execute(delete(Section).where(Section.rfp_document_id == doc.id))
     await db.flush()
 
     total_questions = 0

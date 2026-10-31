@@ -1,6 +1,7 @@
-﻿"""
+"""
 api/clarifications.py — Clarification list endpoints (Phase 0 stub).
 """
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

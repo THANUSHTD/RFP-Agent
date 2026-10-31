@@ -8,6 +8,7 @@ tests/test_phase3.py — Comprehensive tests for Phase 3:
 - Human-in-the-loop: Answer edit (version bump) and explicit SE approval
 - LangGraph analysis pipeline integration
 """
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
@@ -19,6 +20,7 @@ SAMPLE_DOCX = "data/sample_rfp/sample_rfp.docx"
 
 
 # ── Answer Drafting & Grounding Tests ─────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_grounded_answer_drafting_with_citations():
@@ -37,7 +39,10 @@ async def test_grounded_answer_drafting_with_citations():
     assert "Murabaha" in ans_text
     assert conf >= 0.45
     assert len(cites) > 0
-    assert any("azentio" in c["document"].lower() or "specification" in c["document"].lower() for c in cites)
+    assert any(
+        "azentio" in c["document"].lower() or "specification" in c["document"].lower()
+        for c in cites
+    )
     assert status in (QuestionStatus.answered, QuestionStatus.low_confidence)
 
 
@@ -102,11 +107,10 @@ async def test_staleness_warning_propagated_to_answer():
 
 # ── Human-in-the-Loop & Approval API Tests ────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_answer_edit_and_approval_flow():
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         # 1. Create a session and upload RFP
         sess_resp = await client.post("/sessions", json={"name": "Approval Test Session"})
         assert sess_resp.status_code == 201
@@ -117,7 +121,13 @@ async def test_answer_edit_and_approval_flow():
 
         await client.post(
             f"/sessions/{session_id}/rfp",
-            files={"file": ("sample_rfp.docx", docx_bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+            files={
+                "file": (
+                    "sample_rfp.docx",
+                    docx_bytes,
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                )
+            },
         )
 
         # 2. Trigger LangGraph analysis & answer drafting

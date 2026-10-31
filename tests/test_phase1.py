@@ -6,6 +6,7 @@ tests/test_phase1.py — Comprehensive tests for Phase 1:
 - Hybrid search (dense + sparse fusion)
 - Knowledge Base API endpoints
 """
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
@@ -25,6 +26,7 @@ from backend.app.services.retrieval import get_retriever
 
 # ── Redaction Tests ──────────────────────────────────────────────────────────
 
+
 def test_redaction_client_names():
     sample = "Bank Al-Noor contracted with Azentio for deployment at Al-Hilal Bank."
     redacted, was_redacted = redact_text(sample)
@@ -36,7 +38,9 @@ def test_redaction_client_names():
 
 
 def test_redaction_pricing():
-    sample = "Total license fee is $1,250,000 with annual AMC of AED 450,000 and hourly rate $120/hr."
+    sample = (
+        "Total license fee is $1,250,000 with annual AMC of AED 450,000 and hourly rate $120/hr."
+    )
     redacted, was_redacted = redact_text(sample)
     assert was_redacted is True
     assert "$1,250,000" not in redacted
@@ -63,6 +67,7 @@ def test_redaction_clean_product_text():
 
 
 # ── Parsing & Chunking Tests ──────────────────────────────────────────────────
+
 
 def test_frontmatter_extraction():
     raw = """---
@@ -102,6 +107,7 @@ This is the second section detailing Ijarah leasing options.
 
 # ── Staleness Detection Tests ─────────────────────────────────────────────────
 
+
 def test_staleness_detection():
     from datetime import datetime, timedelta
 
@@ -123,8 +129,8 @@ def test_staleness_detection():
     assert "older than" in warning_old
 
 
-
 # ── Hybrid Retrieval Search Tests ─────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_hybrid_search():
@@ -158,11 +164,10 @@ async def test_hybrid_search_staleness_flag():
 
 # ── API Endpoint Tests ────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_kb_api_list_and_search():
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         # 1. Ingest documents into test database
         ingest_resp = await client.post("/kb/ingest?kb_path=data/kb_sample")
         assert ingest_resp.status_code == 200
@@ -184,4 +189,3 @@ async def test_kb_api_list_and_search():
         assert len(search_results) > 0
         assert "snippet" in search_results[0]
         assert "score" in search_results[0]
-

@@ -8,6 +8,7 @@ Hard Rules enforced:
 4. Flagged owner questions (commercial/pricing, legal, delivery/SLA) are never auto-answered.
 5. Format rules (word limits, numbering, tone) are enforced.
 """
+
 import asyncio
 import json
 import logging
@@ -32,7 +33,9 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
-def _extract_grounded_points(question_text: str, chunks: list[KBChunkResult]) -> tuple[str, list[dict[str, Any]], list[str]]:
+def _extract_grounded_points(
+    question_text: str, chunks: list[KBChunkResult]
+) -> tuple[str, list[dict[str, Any]], list[str]]:
     """Synthesize a grounded answer from retrieved chunks with citations and staleness tracking."""
     citations: list[dict[str, Any]] = []
     stale_warnings: list[str] = []
@@ -40,9 +43,29 @@ def _extract_grounded_points(question_text: str, chunks: list[KBChunkResult]) ->
 
     # Filter out generic vendor and boilerplate query stop words so matching 'azentio' alone doesn't trigger false grounding
     query_stop_words = {
-        "does", "what", "where", "which", "when", "how", "your", "platform", "system",
-        "azentio", "azentiofinance", "describe", "provide", "support", "supports",
-        "including", "detail", "state", "confirm", "about", "with", "this", "that",
+        "does",
+        "what",
+        "where",
+        "which",
+        "when",
+        "how",
+        "your",
+        "platform",
+        "system",
+        "azentio",
+        "azentiofinance",
+        "describe",
+        "provide",
+        "support",
+        "supports",
+        "including",
+        "detail",
+        "state",
+        "confirm",
+        "about",
+        "with",
+        "this",
+        "that",
     }
     raw_words = re.findall(r"\w{4,}", question_text.lower())
     q_words = set(w for w in raw_words if w not in query_stop_words)
@@ -63,17 +86,18 @@ def _extract_grounded_points(question_text: str, chunks: list[KBChunkResult]) ->
             if overlap:
                 matched_sentences.append(s)
 
-
         if matched_sentences:
             best_sentence = " ".join(matched_sentences[:2])
             points.append(f"• {best_sentence} [{chunk.chunk_id}]")
-            citations.append({
-                "chunk_id": chunk.chunk_id,
-                "document": chunk.document_name,
-                "source_type": chunk.source_type,
-                "snippet": best_sentence[:300],
-                "type": "kb",
-            })
+            citations.append(
+                {
+                    "chunk_id": chunk.chunk_id,
+                    "document": chunk.document_name,
+                    "source_type": chunk.source_type,
+                    "snippet": best_sentence[:300],
+                    "type": "kb",
+                }
+            )
 
     # Do NOT fall back to random chunk if there is no keyword overlap with the question.
     # Hard Rule: If the sources cannot answer a question, put it on clarification list instead of guessing.
@@ -114,7 +138,6 @@ async def draft_answer_for_question(
     # 3. Synthesize grounded answer
     raw_points, citations, stale_warnings = _extract_grounded_points(question.text, chunks)
 
-
     # 4. If no citations or grounding could be established, route to Clarification
     if not citations or not raw_points.strip():
         answer_text = (
@@ -128,6 +151,46 @@ async def draft_answer_for_question(
     intro = "AzentioFinance natively supports this requirement in adherence to Islamic banking standards:\n\n"
     full_text = f"{header}{intro}{raw_points}"
 
+    # 5. If a real OpenAI API key is present in .env, invoke DRAFT_MODEL (gpt-4o)
+    from backend.app.llm import has_valid_api_key
+
+    if has_valid_api_key():
+        try:
+            from backend.app.agents.prompts.draft_answer import (
+                DRAFT_ANSWER_SYSTEM_PROMPT,
+                DRAFT_ANSWER_USER_PROMPT,
+            )
+            from backend.app.llm import draft
+
+            chunks_formatted = "\n\n".join(
+                [
+                    f"[{c.chunk_id}] (Source: {c.document_name}, Type: {c.source_type})\n{c.snippet}"
+                    for c in chunks
+                ]
+            )
+            user_msg = DRAFT_ANSWER_USER_PROMPT.format(
+                question_number=question.number,
+                question_category=question.category,
+                question_text=question.text,
+                word_limit=word_limit or "Standard (approx 250 words)",
+                section_headings=format_rules.get("section_headings", True),
+                numbering_scheme=format_rules.get("numbering_scheme", "exact"),
+                context_chunks=chunks_formatted,
+            )
+            llm_response = await draft(
+                messages=[
+                    {"role": "system", "content": DRAFT_ANSWER_SYSTEM_PROMPT},
+                    {"role": "user", "content": user_msg},
+                ],
+                purpose=f"draft_answer_q_{question.number}",
+                session_id=question.session_id,
+            )
+            if llm_response and len(str(llm_response).strip()) > 30:
+                full_text = str(llm_response).strip()
+        except Exception as exc:
+            logger.warning(
+                "OpenAI LLM drafting call failed (%s); using deterministic grounded draft", exc
+            )
 
     # Enforce word limit if specified in format rules
     if word_limit and isinstance(word_limit, int):
@@ -135,7 +198,7 @@ async def draft_answer_for_question(
         if len(words) > word_limit:
             full_text = " ".join(words[:word_limit]) + "..."
 
-    # 5. Compute grounded confidence score
+    # 6. Compute grounded confidence score
     # Score is weighted by top retrieval match score and number of corroborating chunks
     confidence = min(0.95, round(top_score * 0.85 + min(len(citations) * 0.05, 0.15), 2))
 
@@ -156,17 +219,13 @@ async def draft_all_session_answers(
 ) -> dict[str, Any]:
     """Process all questions for a session with bounded concurrency."""
     # 1. Fetch format rules
-    rule_res = await db.execute(
-        select(FormatRule).where(FormatRule.session_id == session_id)
-    )
+    rule_res = await db.execute(select(FormatRule).where(FormatRule.session_id == session_id))
     rule_obj = rule_res.scalar_one_or_none()
     format_rules = json.loads(rule_obj.rules_json) if rule_obj and rule_obj.rules_json else {}
 
     # 2. Fetch all questions for this session
     q_res = await db.execute(
-        select(Question)
-        .where(Question.session_id == session_id)
-        .order_by(Question.id)
+        select(Question).where(Question.session_id == session_id).order_by(Question.id)
     )
     questions = list(q_res.scalars())
     if not questions:

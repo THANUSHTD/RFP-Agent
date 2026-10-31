@@ -1,9 +1,10 @@
-﻿"""
+"""
 main.py — FastAPI application entrypoint.
 
 Registers all routers, handles startup (DB init), CORS, and
 global exception handling. Run with: uvicorn backend.app.main:app --reload
 """
+
 import logging
 import sys
 
@@ -58,13 +59,18 @@ app.add_middleware(
 
 # ── Startup ───────────────────────────────────────────────────────────────────
 
+
 @app.on_event("startup")
 async def startup() -> None:
     """Create database tables on startup."""
     logger.info("Starting RFP Agent API v0.1.0")
     await init_db()
-    logger.info("Database initialised. Fast model: %s | Draft model: %s",
-                settings.fast_model, settings.draft_model)
+    logger.info(
+        "Database initialised. Fast model: %s | Draft model: %s",
+        settings.fast_model,
+        settings.draft_model,
+    )
+
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 

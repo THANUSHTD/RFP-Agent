@@ -1,6 +1,7 @@
 """
 conftest.py — Shared pytest fixtures for the RFP Agent test suite.
 """
+
 import asyncio
 import os
 import shutil
@@ -19,10 +20,12 @@ def patch_settings_for_tests(monkeypatch):
     monkeypatch.setenv("CHROMA_DIR", TEST_CHROMA_DIR)
 
     from backend.app.config import get_settings
+
     get_settings.cache_clear()
 
     # Initialize tables for tests
     from backend.app.db import init_db
+
     try:
         loop = asyncio.get_event_loop()
         if loop.is_running():

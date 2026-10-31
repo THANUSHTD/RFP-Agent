@@ -1,9 +1,10 @@
-﻿"""
+"""
 config.py — Application settings loaded from environment variables.
 
 Uses pydantic-settings so every field is typed and validated at startup.
 Never hardcode model names or thresholds here; they all come from .env.
 """
+
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -23,6 +24,7 @@ class Settings(BaseSettings):
 
     # ── LLM ──────────────────────────────────────────────────────────────
     openai_api_key: str = ""
+    openai_base_url: str = ""
     fast_model: str = "gpt-4o-mini"
     draft_model: str = "gpt-4o"
     embedding_model: str = "text-embedding-3-small"

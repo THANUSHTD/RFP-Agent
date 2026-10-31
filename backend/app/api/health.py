@@ -1,8 +1,9 @@
-﻿"""
+"""
 api/health.py — Health check endpoint.
 
 Returns basic status: DB connectivity, configured model names, app version.
 """
+
 import logging
 
 from fastapi import APIRouter, Depends

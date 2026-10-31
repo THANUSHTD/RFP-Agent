@@ -1,10 +1,11 @@
-﻿"""
+"""
 tests/test_phase0.py — Phase 0 tests: config, models, DB, API schema.
 
 These tests do NOT require an OpenAI key or a running server.
 They verify the foundational plumbing: settings loading, DB table creation,
 triage enum values, and API schema validation.
 """
+
 import pytest
 
 from backend.app.config import Settings
@@ -21,6 +22,7 @@ from backend.app.schemas import (
 )
 
 # ── Config tests ──────────────────────────────────────────────────────────────
+
 
 class TestSettings:
     def test_defaults_are_valid(self):
@@ -48,10 +50,17 @@ class TestSettings:
 
 # ── Enum tests ────────────────────────────────────────────────────────────────
 
+
 class TestEnums:
     def test_question_status_values(self):
-        expected = {"pending", "answered", "low_confidence",
-                    "clarification", "flagged_owner", "approved"}
+        expected = {
+            "pending",
+            "answered",
+            "low_confidence",
+            "clarification",
+            "flagged_owner",
+            "approved",
+        }
         assert {s.value for s in QuestionStatus} == expected
 
     def test_owner_dept_values(self):
@@ -72,46 +81,39 @@ class TestEnums:
 
 # ── DB init test ──────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_db_init_creates_tables():
     """init_db() must create all declared tables without errors."""
-    import os
-    # Use a temp in-memory URL for this test
-    os.environ["DATABASE_URL"] = "sqlite+aiosqlite://"  # in-memory
-
-    # Re-import to pick up the overridden env var
-    from importlib import reload
-
-    import backend.app.config as cfg_module
-    import backend.app.db as db_module
-
-    # Reset LRU cache so the patched env is read
-    cfg_module.get_settings.cache_clear()
-
-    reload(db_module)
-
-    await db_module.init_db()
-
-    # Verify a table exists by querying it
     from sqlalchemy import text
-    async with db_module.engine.begin() as conn:
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    from backend.app.models import Base
+
+    test_engine = create_async_engine("sqlite+aiosqlite://", echo=False)
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
         result = await conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'"))
         tables = {row[0] for row in result}
 
     expected_tables = {
-        "sessions", "rfp_documents", "sections", "questions",
-        "answers", "clarifications", "chat_messages", "kb_documents",
-        "format_rules", "llm_calls",
+        "sessions",
+        "rfp_documents",
+        "sections",
+        "questions",
+        "answers",
+        "clarifications",
+        "chat_messages",
+        "kb_documents",
+        "format_rules",
+        "llm_calls",
     }
     assert expected_tables.issubset(tables), f"Missing tables: {expected_tables - tables}"
-
-    # Cleanup
-    await db_module.engine.dispose()
-    cfg_module.get_settings.cache_clear()
-    del os.environ["DATABASE_URL"]
+    await test_engine.dispose()
 
 
 # ── Schema validation tests ───────────────────────────────────────────────────
+
 
 class TestSchemas:
     def test_session_create_rejects_empty_name(self):
@@ -134,6 +136,7 @@ class TestSchemas:
 
 
 # ── Triage rule unit test ─────────────────────────────────────────────────────
+
 
 class TestTriageRules:
     """Basic triage logic: commercial/legal/sla/pricing must be flagged to owner.

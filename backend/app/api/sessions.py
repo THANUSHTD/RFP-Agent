@@ -1,9 +1,10 @@
-﻿"""
+"""
 api/sessions.py — Session CRUD endpoints.
 
 A session represents one RFP engagement. SEs create a session, upload an RFP,
 and all subsequent work (questions, answers, chat) is scoped to that session.
 """
+
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -35,9 +36,7 @@ async def create_session(
 @router.get("", response_model=list[SessionOut], summary="List sessions")
 async def list_sessions(db: AsyncSession = Depends(get_db)) -> list[SessionOut]:
     """Return all sessions ordered by most recent first."""
-    result = await db.execute(
-        select(SessionModel).order_by(SessionModel.updated_at.desc())
-    )
+    result = await db.execute(select(SessionModel).order_by(SessionModel.updated_at.desc()))
     sessions = result.scalars().all()
     return [SessionOut.model_validate(s) for s in sessions]
 

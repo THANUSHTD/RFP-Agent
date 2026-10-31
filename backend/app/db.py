@@ -1,9 +1,10 @@
-﻿"""
+"""
 db.py — Database engine, session factory, and table initialisation.
 
 We use SQLAlchemy 2.0 async engine backed by aiosqlite.
 Call `init_db()` once at startup to create all tables.
 """
+
 from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine

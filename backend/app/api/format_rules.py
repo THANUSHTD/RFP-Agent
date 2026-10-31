@@ -1,6 +1,7 @@
-﻿"""
+"""
 api/format_rules.py — Format rules endpoints (Phase 0 stub).
 """
+
 import json
 from datetime import datetime
 
@@ -23,9 +24,7 @@ async def get_format_rules(
     session = await db.get(SessionModel, session_id)
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
-    result = await db.execute(
-        select(FormatRule).where(FormatRule.session_id == session_id)
-    )
+    result = await db.execute(select(FormatRule).where(FormatRule.session_id == session_id))
     rule = result.scalar_one_or_none()
     return FormatRulesOut.model_validate(rule) if rule else None
 
@@ -38,9 +37,7 @@ async def put_format_rules(
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    result = await db.execute(
-        select(FormatRule).where(FormatRule.session_id == session_id)
-    )
+    result = await db.execute(select(FormatRule).where(FormatRule.session_id == session_id))
     rule = result.scalar_one_or_none()
     if rule is None:
         rule = FormatRule(session_id=session_id)

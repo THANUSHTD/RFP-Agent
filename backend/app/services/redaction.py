@@ -6,6 +6,7 @@ Strict requirement from brief:
 - Redact client names, pricing, email addresses, phone numbers, and secrets.
 - Redaction happens BEFORE storage in Chroma / SQLite; original text is never persisted.
 """
+
 import re
 
 # Standard replacement tokens
@@ -32,14 +33,10 @@ KNOWN_CLIENTS = [
 ]
 
 # Regex patterns
-RE_EMAIL = re.compile(
-    r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"
-)
+RE_EMAIL = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b")
 
 # Phone numbers (international, hyphenated, bracketed, handles 1-4 digit area codes)
-RE_PHONE = re.compile(
-    r"(?:\+\d{1,3}[-.\s]?)?(?:\(?\d{1,4}\)?[-.\s]?)?\d{3,4}[-.\s]?\d{3,4}\b"
-)
+RE_PHONE = re.compile(r"(?:\+\d{1,3}[-.\s]?)?(?:\(?\d{1,4}\)?[-.\s]?)?\d{3,4}[-.\s]?\d{3,4}\b")
 
 
 # Pricing / Currency amounts (USD, AED, SAR, EUR, GBP, $, etc.)

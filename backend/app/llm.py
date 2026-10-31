@@ -12,6 +12,7 @@ Features:
   - Structured output via response_format parameter (Pydantic schema or None)
   - Never logs full message content or API keys
 """
+
 import asyncio
 import hashlib
 import logging
@@ -19,11 +20,10 @@ import time
 from typing import Any, TypeVar
 
 import numpy as np
-from openai import APIError, AsyncOpenAI, RateLimitError
+from openai import APIConnectionError, APIError, AsyncOpenAI, AuthenticationError, RateLimitError
 from pydantic import BaseModel
 from tenacity import (
     retry,
-    retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
 )
@@ -33,23 +33,52 @@ from backend.app.config import get_settings
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-# Singleton client — created once, reused for the application lifetime.
-_client = AsyncOpenAI(api_key=settings.openai_api_key)
+
+def has_valid_api_key() -> bool:
+    """Return True only if a real, active OpenAI API key is configured."""
+    key = get_settings().openai_api_key.strip()
+    return bool(
+        key
+        and not key.startswith("sk-...")
+        and not key.startswith("sk-dummy")
+        and not key.startswith("sk-test")
+    )
+
+
+def _get_client() -> AsyncOpenAI:
+    """Return AsyncOpenAI client configured with settings (including base_url if provided)."""
+    s = get_settings()
+    client_kwargs: dict[str, Any] = {"api_key": s.openai_api_key or "sk-dummy"}
+    if s.openai_base_url:
+        client_kwargs["base_url"] = s.openai_base_url
+    return AsyncOpenAI(**client_kwargs)
+
+
+# Reusable client reference
+_client = _get_client()
 
 T = TypeVar("T", bound=BaseModel)
 
 
 # ── Retry decorator for transient OpenAI errors ───────────────────────────────
 
+
+def _is_retryable_error(exc: BaseException) -> bool:
+    if isinstance(exc, AuthenticationError):
+        return False
+    return isinstance(exc, RateLimitError | APIConnectionError | APIError)
+
+
 _retry = retry(
-    retry=retry_if_exception_type((RateLimitError, APIError)),
-    wait=wait_exponential(multiplier=1, min=2, max=30),
-    stop=stop_after_attempt(4),
+    retry=_is_retryable_error,
+    wait=wait_exponential(multiplier=1, min=1, max=10),
+    stop=stop_after_attempt(3),
     reraise=True,
 )
 
 
 # ── Internal logging helper ───────────────────────────────────────────────────
+
 
 async def _log_call(
     *,
@@ -82,6 +111,7 @@ async def _log_call(
 
 
 # ── Core call function ────────────────────────────────────────────────────────
+
 
 @_retry
 async def _call(
@@ -118,11 +148,16 @@ async def _call(
         # Use OpenAI structured outputs (JSON schema mode)
         kwargs["response_format"] = response_format
 
+    client = _get_client()
     if response_format is not None:
-        response = await _client.beta.chat.completions.parse(**kwargs)
-        result = response.choices[0].message.parsed
+        try:
+            response = await client.beta.chat.completions.parse(**kwargs)
+            result = response.choices[0].message.parsed
+        except Exception:
+            response = await client.chat.completions.create(**kwargs)
+            result = response.choices[0].message.content or ""
     else:
-        response = await _client.chat.completions.create(**kwargs)
+        response = await client.chat.completions.create(**kwargs)
         result = response.choices[0].message.content or ""
 
     latency_ms = int((time.monotonic() - start) * 1000)
@@ -152,6 +187,7 @@ async def _call(
 
 
 # ── Public helpers ────────────────────────────────────────────────────────────
+
 
 async def fast(
     messages: list[dict[str, str]],
@@ -186,7 +222,6 @@ async def draft(
 
 
 def _deterministic_embedding(text: str, dim: int = 1536) -> list[float]:
-
     """Generate a deterministic normalized float vector for testing or offline mode.
 
     Uses token unigrams and SHA-256 hash seeds to ensure identical text produces
@@ -218,13 +253,15 @@ async def embed(texts: list[str]) -> list[list[float]]:
     if not texts:
         return []
 
+    s = get_settings()
     # If key is missing or dummy placeholder, use deterministic embedding
-    if not settings.openai_api_key or settings.openai_api_key.startswith("sk-..."):
+    if not has_valid_api_key():
         return [_deterministic_embedding(t) for t in texts]
 
     try:
-        response = await _client.embeddings.create(
-            model=settings.embedding_model,
+        client = _get_client()
+        response = await client.embeddings.create(
+            model=s.embedding_model,
             input=texts,
         )
         items = sorted(response.data, key=lambda x: x.index)
@@ -235,4 +272,3 @@ async def embed(texts: list[str]) -> list[list[float]]:
             exc,
         )
         return [_deterministic_embedding(t) for t in texts]
-

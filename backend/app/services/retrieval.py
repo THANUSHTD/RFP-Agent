@@ -7,6 +7,7 @@ Components:
 3. Reciprocal Rank Fusion (RRF) combining dense & sparse ranks
 4. Staleness detection (semver check & age check)
 """
+
 import logging
 import os
 import re
@@ -213,7 +214,7 @@ class HybridRetriever:
         if self._bm25 is not None and len(self._bm25_corpus) > 0:
             query_tokens = _tokenize(query)
             bm25_scores = self._bm25.get_scores(query_tokens)
-            
+
             # Sort indices by score descending
             ranked_indices = sorted(
                 range(len(bm25_scores)),

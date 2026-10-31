@@ -10,6 +10,7 @@ Extracts:
    - sla -> Delivery owner -> flagged_owner
 4. Format rules (word limits, numbering, file naming, required headings)
 """
+
 import logging
 import re
 from dataclasses import dataclass, field
@@ -97,7 +98,6 @@ def classify_question(
 
     # Prioritize question text specific keywords
     if RE_LEGAL_STRICT.search(text_lower):
-
         return (QuestionCategory.legal, OwnerDept.legal, QuestionStatus.flagged_owner)
 
     if RE_SLA_STRICT.search(text_lower):
@@ -107,15 +107,26 @@ def classify_question(
         return (QuestionCategory.commercial, OwnerDept.pricing, QuestionStatus.flagged_owner)
 
     # Section-level fallback
-    if "commercial" in sec_lower and ("fee" in text_lower or "cost" in text_lower or "price" in text_lower or "tco" in text_lower):
+    if "commercial" in sec_lower and (
+        "fee" in text_lower or "cost" in text_lower or "price" in text_lower or "tco" in text_lower
+    ):
         return (QuestionCategory.commercial, OwnerDept.pricing, QuestionStatus.flagged_owner)
 
-    if "legal" in sec_lower and ("law" in text_lower or "contract" in text_lower or "jurisdiction" in text_lower or "residency" in text_lower):
+    if "legal" in sec_lower and (
+        "law" in text_lower
+        or "contract" in text_lower
+        or "jurisdiction" in text_lower
+        or "residency" in text_lower
+    ):
         return (QuestionCategory.legal, OwnerDept.legal, QuestionStatus.flagged_owner)
 
-    if "sla" in sec_lower and ("uptime" in text_lower or "rto" in text_lower or "response" in text_lower or "commitment" in text_lower):
+    if "sla" in sec_lower and (
+        "uptime" in text_lower
+        or "rto" in text_lower
+        or "response" in text_lower
+        or "commitment" in text_lower
+    ):
         return (QuestionCategory.sla, OwnerDept.delivery, QuestionStatus.flagged_owner)
-
 
     # 4. Shariah (Product/SE)
     if RE_SHARIAH.search(combined):
@@ -132,8 +143,8 @@ def classify_question(
     return (QuestionCategory.other, None, QuestionStatus.pending)
 
 
-
 # ── Format Rules Extractor ───────────────────────────────────────────────────
+
 
 def extract_format_rules(text: str) -> dict[str, Any]:
     """Extract response guidelines and formatting rules from document text."""
@@ -148,16 +159,22 @@ def extract_format_rules(text: str) -> dict[str, Any]:
     }
 
     # Extract word limit (e.g. "Maximum 250 words" or "250 word limit")
-    word_limit_match = re.search(r"(?:maximum|limit of|max\.?)\s*(\d{2,4})\s*words?", text, re.IGNORECASE)
+    word_limit_match = re.search(
+        r"(?:maximum|limit of|max\.?)\s*(\d{2,4})\s*words?", text, re.IGNORECASE
+    )
     if not word_limit_match:
-        word_limit_match = re.search(r"(\d{2,4})\s*words?\s*(?:maximum|limit|per answer)", text, re.IGNORECASE)
+        word_limit_match = re.search(
+            r"(\d{2,4})\s*words?\s*(?:maximum|limit|per answer)", text, re.IGNORECASE
+        )
     if word_limit_match:
         rules["word_limit"] = int(word_limit_match.group(1))
 
     # Extract file naming convention (e.g. "ABDB-RFP-2024-001_<VendorName>_Response.docx")
     naming_match = re.search(r"File naming:\s*([^\n\r]+)", text, re.IGNORECASE)
     if not naming_match:
-        naming_match = re.search(r"([A-Z0-9_\-]+\s*<[^>]+>\s*_[A-Za-z0-9_\-\.]+\.(?:docx|pdf))", text)
+        naming_match = re.search(
+            r"([A-Z0-9_\-]+\s*<[^>]+>\s*_[A-Za-z0-9_\-\.]+\.(?:docx|pdf))", text
+        )
     if naming_match:
         rules["file_naming"] = naming_match.group(1).strip()
 
@@ -179,19 +196,16 @@ def extract_format_rules(text: str) -> dict[str, Any]:
 
 # ── Structure & Questions Extractor ──────────────────────────────────────────
 
+
 def extract_sections_and_questions(text: str) -> list[ExtractedSection]:
     """Parse raw RFP text into hierarchical sections and discrete questions."""
     lines = text.splitlines()
 
     # Identify major section boundaries (e.g. "1. Introduction", "3. Core Platform Capabilities")
-    section_header_re = re.compile(
-        r"^(?:#{1,3}\s*)?(\d+)\.\s+([A-Za-z0-9,\s&/\-]+)$"
-    )
+    section_header_re = re.compile(r"^(?:#{1,3}\s*)?(\d+)\.\s+([A-Za-z0-9,\s&/\-]+)$")
 
     # Identify questions (e.g. "3.1.1. Describe...", "4.1. Describe...", "6.2. State...")
-    question_re = re.compile(
-        r"^(\d+(?:\.\d+)+)\.?\s+(.+)$"
-    )
+    question_re = re.compile(r"^(\d+(?:\.\d+)+)\.?\s+(.+)$")
 
     sections: list[ExtractedSection] = []
     current_section = ExtractedSection(title="General Requirements", order_index=0)
@@ -231,7 +245,22 @@ def extract_sections_and_questions(text: str) -> list[ExtractedSection]:
                 and not q_body.endswith("?")
                 and not any(
                     q_body.lower().startswith(v)
-                    for v in ("describe", "provide", "state", "does", "how", "what", "list", "confirm", "explain", "detail", "submit", "is ", "are ", "can ")
+                    for v in (
+                        "describe",
+                        "provide",
+                        "state",
+                        "does",
+                        "how",
+                        "what",
+                        "list",
+                        "confirm",
+                        "explain",
+                        "detail",
+                        "submit",
+                        "is ",
+                        "are ",
+                        "can ",
+                    )
                 )
                 and not ("[MANDATORY]" in q_body.upper() or "[OPTIONAL]" in q_body.upper())
             )
@@ -248,11 +277,16 @@ def extract_sections_and_questions(text: str) -> list[ExtractedSection]:
                 mandatory = True
 
             # Clean mandatory/optional tags from question body
-            clean_body = re.sub(r"\[(MANDATORY|OPTIONAL)\]", "", q_body, flags=re.IGNORECASE).strip()
+            clean_body = re.sub(
+                r"\[(MANDATORY|OPTIONAL)\]", "", q_body, flags=re.IGNORECASE
+            ).strip()
 
             # Determine kind
             kind = QuestionKind.narrative
-            if "compliance matrix" in current_section.title.lower() or "compliance matrix" in clean_body.lower():
+            if (
+                "compliance matrix" in current_section.title.lower()
+                or "compliance matrix" in clean_body.lower()
+            ):
                 kind = QuestionKind.compliance_item
 
             # Determine category, owner, and status
@@ -270,7 +304,6 @@ def extract_sections_and_questions(text: str) -> list[ExtractedSection]:
             )
             current_section.questions.append(current_question)
             continue
-
 
         # Continuation of multi-line question text
         if current_question and not line_str.startswith("#") and not line_str.startswith("=="):

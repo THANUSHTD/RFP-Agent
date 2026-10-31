@@ -30,6 +30,7 @@ dependencies = [
     "python-multipart==0.0.9",
     "tiktoken==0.7.0",
     "numpy==1.26.4",
+    "pyarrow>=17.0.0,<18.0.0",
 ]
 
 [project.optional-dependencies]

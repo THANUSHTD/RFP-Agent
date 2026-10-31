@@ -4,6 +4,7 @@ schemas.py — Pydantic v2 request / response schemas.
 These are separate from the SQLAlchemy ORM models (models.py).
 They define the API contract and are used for validation and serialisation.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -13,12 +14,14 @@ from pydantic import BaseModel, ConfigDict, Field
 
 # ── Shared ───────────────────────────────────────────────────────────────────
 
+
 class OKResponse(BaseModel):
     ok: bool = True
     message: str = "success"
 
 
 # ── Sessions ──────────────────────────────────────────────────────────────────
+
 
 class SessionCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
@@ -35,6 +38,7 @@ class SessionOut(BaseModel):
 
 # ── RFP Documents ─────────────────────────────────────────────────────────────
 
+
 class RFPDocumentOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -47,6 +51,7 @@ class RFPDocumentOut(BaseModel):
 
 
 # ── Questions ─────────────────────────────────────────────────────────────────
+
 
 class QuestionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -66,8 +71,10 @@ class QuestionOut(BaseModel):
 
 # ── Answers ───────────────────────────────────────────────────────────────────
 
+
 class CitationItem(BaseModel):
     """One citation entry in an answer."""
+
     chunk_id: str = ""
     document: str = ""
     source_type: str = ""
@@ -94,15 +101,18 @@ class AnswerOut(BaseModel):
 
 class AnswerPatch(BaseModel):
     """Fields an SE can update on an answer."""
+
     text: str | None = None
 
 
 class ApproveRequest(BaseModel):
     """Body for the approve endpoint — explicit SE confirmation."""
+
     confirm: bool = Field(..., description="Must be True for approval to proceed.")
 
 
 # ── Clarifications ────────────────────────────────────────────────────────────
+
 
 class ClarificationOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -117,6 +127,7 @@ class ClarificationOut(BaseModel):
 
 
 # ── Format Rules ──────────────────────────────────────────────────────────────
+
 
 class FormatRulesOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -135,6 +146,7 @@ class FormatRulesPut(BaseModel):
 
 # ── Chat ──────────────────────────────────────────────────────────────────────
 
+
 class ChatMessageIn(BaseModel):
     content: str = Field(..., min_length=1)
 
@@ -150,6 +162,7 @@ class ChatMessageOut(BaseModel):
 
 
 # ── KB ────────────────────────────────────────────────────────────────────────
+
 
 class KBDocumentOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -187,8 +200,10 @@ class KBChunkResult(BaseModel):
 
 # ── Analysis progress ─────────────────────────────────────────────────────────
 
+
 class AnalysisProgressEvent(BaseModel):
     """Emitted via SSE during RFP analysis."""
+
     event: str  # e.g. "parsing", "extracting", "question_done", "complete", "error"
     message: str
     question_id: int | None = None
@@ -196,11 +211,24 @@ class AnalysisProgressEvent(BaseModel):
     done: int | None = None
 
 
-# ── Health ────────────────────────────────────────────────────────────────────
-
 class HealthOut(BaseModel):
     status: str = "ok"
     version: str
     db: str
     fast_model: str
     draft_model: str
+
+
+# ── Export ────────────────────────────────────────────────────────────────────
+
+
+class ExportPackageOut(BaseModel):
+    session_id: int
+    session_name: str
+    docx_filename: str
+    xlsx_filename: str
+    docx_path: str
+    xlsx_path: str
+    total_questions: int
+    approved_count: int
+    generated_at: str

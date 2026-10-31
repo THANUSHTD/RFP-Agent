@@ -5,6 +5,7 @@ Phase 0: Shell with sidebar, session management, and a basic chat area.
 The app calls the FastAPI backend over HTTP using httpx.
 Streamlit never touches the DB, vector store, or LLM directly.
 """
+
 import os
 
 import httpx
@@ -22,8 +23,8 @@ st.set_page_config(
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def api_get(path: str) -> dict | list | None:
     """GET from the backend. Returns parsed JSON or None on error."""
@@ -132,7 +133,6 @@ with st.sidebar:
                 st.rerun()
 
 
-
 # ── Main area ─────────────────────────────────────────────────────────────────
 if st.session_state.active_session_id is None:
     st.title("Welcome to RFP Agent")
@@ -156,9 +156,9 @@ st.title(f"📋 {st.session_state.active_session_name}")
 st.caption(f"Session ID: {st.session_state.active_session_id}")
 
 # Tabs — stubs for Phase 0; filled in later phases
-tab_chat, tab_questions, tab_clarifications, tab_format, tab_export = st.tabs([
-    "💬 Chat", "❓ Questions", "📝 Clarifications", "📐 Format Rules", "📤 Export"
-])
+tab_chat, tab_questions, tab_clarifications, tab_format, tab_export = st.tabs(
+    ["💬 Chat", "❓ Questions", "📝 Clarifications", "📐 Format Rules", "📤 Export"]
+)
 
 # ── Chat tab ──────────────────────────────────────────────────────────────────
 with tab_chat:
@@ -187,10 +187,10 @@ with tab_chat:
                     st.error(f"Upload failed: {exc}")
 
         if st.button("🔍 Analyze RFP", key="analyze_btn", help="Starts the analysis pipeline"):
-            with st.spinner("Analyzing RFP structure, extracting questions, and detecting format rules..."):
-                result = api_post(
-                    f"/sessions/{st.session_state.active_session_id}/analyze"
-                )
+            with st.spinner(
+                "Analyzing RFP structure, extracting questions, and detecting format rules..."
+            ):
+                result = api_post(f"/sessions/{st.session_state.active_session_id}/analyze")
                 if result:
                     st.success(result.get("message", "Analysis complete!"))
                     st.rerun()
@@ -198,29 +198,48 @@ with tab_chat:
     st.divider()
 
     # Chat history
+    st.markdown("#### Conversational Workspace")
     messages = api_get(f"/sessions/{st.session_state.active_session_id}/messages") or []
     for msg in messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    # Input
-    if user_input := st.chat_input("Ask the agent something..."):
+    # Quick Action Suggestion Chips
+    st.markdown("##### 💡 Quick SE Commands")
+    chip_cols = st.columns(4)
+    suggested_prompt = None
+    if chip_cols[0].button("📋 List All Questions", key="chip_list", use_container_width=True):
+        suggested_prompt = "List all questions"
+    if chip_cols[1].button("🚩 Flagged to Pricing", key="chip_pricing", use_container_width=True):
+        suggested_prompt = "List questions flagged to Pricing"
+    if chip_cols[2].button("🔍 Search KB: Murabaha", key="chip_search", use_container_width=True):
+        suggested_prompt = "Search KB: Murabaha early settlement rebate"
+    if chip_cols[3].button("📊 RFP Status Summary", key="chip_summary", use_container_width=True):
+        suggested_prompt = "Show overall RFP summary"
+
+    # Input handling
+    user_input = st.chat_input("Ask a question, request an answer rewrite, or inject an SE fact...")
+    active_prompt = user_input or suggested_prompt
+
+    if active_prompt:
         with st.chat_message("user"):
-            st.markdown(user_input)
-        result = api_post(
-            f"/sessions/{st.session_state.active_session_id}/chat",
-            {"content": user_input},
-        )
-        if result:
-            with st.chat_message("assistant"):
-                st.markdown(result["content"])
+            st.markdown(active_prompt)
+        with st.spinner("RFP Agent thinking & executing tools..."):
+            result = api_post(
+                f"/sessions/{st.session_state.active_session_id}/chat",
+                {"content": active_prompt},
+            )
+            if result:
+                st.rerun()
 
 # ── Questions tab ─────────────────────────────────────────────────────────────
 with tab_questions:
     st.subheader("Extracted Requirements & Questions")
     questions = api_get(f"/sessions/{st.session_state.active_session_id}/questions") or []
     if not questions:
-        st.info("No questions extracted yet. Upload an RFP and click **🔍 Analyze RFP** in the Chat tab.")
+        st.info(
+            "No questions extracted yet. Upload an RFP and click **🔍 Analyze RFP** in the Chat tab."
+        )
     else:
         # Metrics row
         total_q = len(questions)
@@ -258,16 +277,22 @@ with tab_questions:
 
         table_data = []
         for q in filtered:
-            status_badge = "🏷️ Flagged" if q["status"] == "flagged_owner" else ("✅ Approved" if q["status"] == "approved" else "⏳ Pending")
+            status_badge = (
+                "🏷️ Flagged"
+                if q["status"] == "flagged_owner"
+                else ("✅ Approved" if q["status"] == "approved" else "⏳ Pending")
+            )
             owner_label = f"👤 {q['owner']}" if q.get("owner") else "—"
-            table_data.append({
-                "No.": q["number"],
-                "Category": q.get("category", "").upper(),
-                "Owner": owner_label,
-                "Status": status_badge,
-                "Mandatory": "★ Yes" if q["mandatory"] else "No",
-                "Question": q["text"],
-            })
+            table_data.append(
+                {
+                    "No.": q["number"],
+                    "Category": q.get("category", "").upper(),
+                    "Owner": owner_label,
+                    "Status": status_badge,
+                    "Mandatory": "★ Yes" if q["mandatory"] else "No",
+                    "Question": q["text"],
+                }
+            )
 
         st.dataframe(
             table_data,
@@ -283,7 +308,9 @@ with tab_questions:
                 chosen_num = st.selectbox("Select question to inspect and review draft:", q_nums)
                 chosen = next((q for q in filtered if q["number"] == chosen_num), None)
                 if chosen:
-                    st.markdown(f"### Requirement `{chosen['number']}` ({chosen.get('category', '').upper()})")
+                    st.markdown(
+                        f"### Requirement `{chosen['number']}` ({chosen.get('category', '').upper()})"
+                    )
                     st.info(chosen["text"])
 
                     # Fetch active draft answer
@@ -295,10 +322,13 @@ with tab_questions:
                         with conf_col:
                             st.progress(conf, text=f"Grounded Confidence Score: {int(conf * 100)}%")
                         with status_col:
-                            st.caption(f"Status: **{ans.get('status', 'draft').upper()}** (v{ans.get('version', 1)})")
+                            st.caption(
+                                f"Status: **{ans.get('status', 'draft').upper()}** (v{ans.get('version', 1)})"
+                            )
 
                         # Staleness alerts
                         import json
+
                         stales = json.loads(ans.get("stale_warnings_json", "[]"))
                         for sw in stales:
                             st.warning(f"⚠️ **Staleness Notice:** {sw}")
@@ -324,7 +354,9 @@ with tab_questions:
                                     st.rerun()
                         with btn_c2:
                             if ans.get("status") != "approved":
-                                if st.button("✅ Approve Answer", type="primary", key=f"appr_{chosen['id']}"):
+                                if st.button(
+                                    "✅ Approve Answer", type="primary", key=f"appr_{chosen['id']}"
+                                ):
                                     appr_res = httpx.post(
                                         f"{BACKEND_URL}/questions/{chosen['id']}/approve",
                                         json={"confirm": True},
@@ -340,11 +372,15 @@ with tab_questions:
                         if cites:
                             st.markdown("##### Grounded Citations")
                             for idx, c in enumerate(cites):
-                                with st.expander(f"📌 Citation [{c.get('chunk_id')}]: {c.get('document')}"):
+                                with st.expander(
+                                    f"📌 Citation [{c.get('chunk_id')}]: {c.get('document')}"
+                                ):
                                     st.caption(f"Source Type: `{c.get('source_type')}`")
                                     st.markdown(f"> *{c.get('snippet')}*")
                         elif chosen.get("owner"):
-                            st.info(f"This question is assigned to the **{chosen['owner']}** department.")
+                            st.info(
+                                f"This question is assigned to the **{chosen['owner']}** department."
+                            )
                         else:
                             st.caption("No knowledge base citations linked to this draft.")
                     else:
@@ -353,11 +389,11 @@ with tab_questions:
 # ── Clarifications tab ────────────────────────────────────────────────────────
 with tab_clarifications:
     st.subheader("Clarification List (Low Confidence / Insufficient Sources)")
-    clarifs = api_get(
-        f"/sessions/{st.session_state.active_session_id}/clarifications"
-    ) or []
+    clarifs = api_get(f"/sessions/{st.session_state.active_session_id}/clarifications") or []
     if not clarifs:
-        st.success("✅ No open clarifications! All questions either had grounded knowledge sources or were assigned to department owners.")
+        st.success(
+            "✅ No open clarifications! All questions either had grounded knowledge sources or were assigned to department owners."
+        )
     else:
         st.warning(f"There are **{len(clarifs)}** items requiring Sales Engineer attention:")
         for c in clarifs:
@@ -375,20 +411,33 @@ with tab_format:
         st.info("No format rules extracted yet. Upload an RFP and click **🔍 Analyze RFP** first.")
     else:
         import json
-        rules_data = json.loads(rules_obj["rules_json"]) if isinstance(rules_obj["rules_json"], str) else rules_obj["rules_json"]
+
+        rules_data = (
+            json.loads(rules_obj["rules_json"])
+            if isinstance(rules_obj["rules_json"], str)
+            else rules_obj["rules_json"]
+        )
 
         col_r1, col_r2 = st.columns(2)
         with col_r1:
-            st.markdown(f"**Word Limit per Answer:** `{rules_data.get('word_limit', 'None specified')} words`")
+            st.markdown(
+                f"**Word Limit per Answer:** `{rules_data.get('word_limit', 'None specified')} words`"
+            )
             st.markdown(f"**Numbering Scheme:** `{rules_data.get('numbering_scheme', 'exact')}`")
-            st.markdown(f"**Section Headings Required:** `{'Yes' if rules_data.get('section_headings') else 'No'}`")
+            st.markdown(
+                f"**Section Headings Required:** `{'Yes' if rules_data.get('section_headings') else 'No'}`"
+            )
         with col_r2:
             st.markdown(f"**File Naming Template:** `{rules_data.get('file_naming', 'Standard')}`")
             st.markdown(f"**Language & Tone:** `{rules_data.get('language', 'English')}`")
-            st.markdown(f"**Compliance Matrix Required:** `{'Yes' if rules_data.get('compliance_matrix_required') else 'No'}`")
+            st.markdown(
+                f"**Compliance Matrix Required:** `{'Yes' if rules_data.get('compliance_matrix_required') else 'No'}`"
+            )
 
         is_confirmed = rules_obj.get("confirmed_by_se", False)
-        st.caption(f"Status: **{'Confirmed by Sales Engineer ✅' if is_confirmed else 'Pending SE Confirmation ⚠️'}**")
+        st.caption(
+            f"Status: **{'Confirmed by Sales Engineer ✅' if is_confirmed else 'Pending SE Confirmation ⚠️'}**"
+        )
 
         if not is_confirmed:
             if st.button("✅ Confirm Format Rules", use_container_width=True):
@@ -400,12 +449,109 @@ with tab_format:
                     st.success("Format rules confirmed!")
                     st.rerun()
         else:
-            st.success("These formatting rules will be enforced during answer drafting and DOCX/XLSX export.")
+            st.success(
+                "These formatting rules will be enforced during answer drafting and DOCX/XLSX export."
+            )
 
 
-# ── Export tab (Phase 0 stub) ─────────────────────────────────────────────────
+# ── Export tab ────────────────────────────────────────────────────────────────
 with tab_export:
-    st.subheader("Export Response")
-    st.info("Export is available in Phase 5 after all answers are approved.")
-    if st.button("📤 Export (stub)", disabled=True):
-        pass
+    st.subheader("Export RFP Response Package")
+
+    # Fetch current session statistics
+    questions = api_get(f"/sessions/{st.session_state.active_session_id}/questions") or []
+    rules_obj = api_get(f"/sessions/{st.session_state.active_session_id}/format-rules")
+    rules_confirmed = rules_obj.get("confirmed_by_se", False) if rules_obj else False
+
+    total_q = len(questions)
+    approved_q = sum(1 for q in questions if q["status"] == "approved")
+    draft_q = total_q - approved_q
+
+    # Readiness Checklist Cards
+    st.markdown("#### 📋 Pre-Export Readiness Assessment")
+    rc1, rc2, rc3 = st.columns(3)
+    with rc1:
+        st.metric("Total Requirements", total_q)
+    with rc2:
+        st.metric(
+            "Approved by SE",
+            f"{approved_q} / {total_q}",
+            delta=f"{int(approved_q/total_q*100 if total_q else 0)}% Complete",
+        )
+    with rc3:
+        status_label = "Confirmed ✅" if rules_confirmed else "Pending ⚠️"
+        st.metric("Format Rules", status_label)
+
+    if draft_q > 0:
+        st.warning(
+            f"ℹ️ **Notice:** {draft_q} questions have unconfirmed draft answers. "
+            "They will be exported with the official security watermark: `[DRAFT — NOT APPROVED BY SALES ENGINEER]`."
+        )
+    else:
+        st.success(
+            "🎉 All requirements have been approved by the Sales Engineer! Ready for client submission."
+        )
+
+    st.divider()
+
+    # Generate Export Package Action
+    st.markdown("#### 🚀 Generate Export Package")
+    st.caption(
+        "Creates both the styled Word document (.docx) and the Section 7 Compliance Matrix (.xlsx)."
+    )
+
+    if st.button("📦 Build / Refresh Export Package", type="primary", use_container_width=True):
+        with st.spinner("Generating formatted DOCX proposal and XLSX compliance matrix..."):
+            exp_res = api_post(f"/sessions/{st.session_state.active_session_id}/export")
+            if exp_res:
+                st.session_state[f"export_package_{st.session_state.active_session_id}"] = exp_res
+                st.success("Export package generated successfully!")
+
+    # Check for existing export package
+    pkg = st.session_state.get(f"export_package_{st.session_state.active_session_id}")
+
+    if pkg:
+        st.markdown("#### 📥 Download Deliverables")
+        d_col1, d_col2 = st.columns(2)
+
+        with d_col1:
+            st.markdown(
+                f"**Proposal Document (DOCX)**  \n`{pkg.get('docx_filename', 'proposal.docx')}`"
+            )
+            try:
+                docx_resp = httpx.get(
+                    f"{BACKEND_URL}/sessions/{st.session_state.active_session_id}/export/docx",
+                    timeout=60,
+                )
+                if docx_resp.status_code == 200:
+                    st.download_button(
+                        label="📄 Download DOCX Proposal",
+                        data=docx_resp.content,
+                        file_name=pkg.get("docx_filename", "RFP_Response_Proposal.docx"),
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        use_container_width=True,
+                    )
+            except Exception as exc:
+                st.error(f"Failed to fetch DOCX: {exc}")
+
+        with d_col2:
+            st.markdown(
+                f"**Compliance Matrix (XLSX)**  \n`{pkg.get('xlsx_filename', 'matrix.xlsx')}`"
+            )
+            try:
+                xlsx_resp = httpx.get(
+                    f"{BACKEND_URL}/sessions/{st.session_state.active_session_id}/export/xlsx",
+                    timeout=60,
+                )
+                if xlsx_resp.status_code == 200:
+                    st.download_button(
+                        label="📊 Download Section 7 Compliance Matrix",
+                        data=xlsx_resp.content,
+                        file_name=pkg.get("xlsx_filename", "Compliance_Matrix.xlsx"),
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True,
+                    )
+            except Exception as exc:
+                st.error(f"Failed to fetch XLSX: {exc}")
+
+        st.caption(f"Generated at: {pkg.get('generated_at', 'Recently')} (UTC)")

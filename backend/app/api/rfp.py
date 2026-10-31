@@ -4,6 +4,7 @@ api/rfp.py — RFP document upload and analysis endpoints.
 Upload validates file type and size. Analysis is a stub in Phase 0;
 the full LangGraph pipeline is wired up in Phase 2/3.
 """
+
 import logging
 import re
 from pathlib import Path
@@ -21,7 +22,10 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/sessions", tags=["rfp"])
 settings = get_settings()
 
-ALLOWED_TYPES = {"application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
+ALLOWED_TYPES = {
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+}
 UPLOAD_DIR = Path("uploads")
 
 
@@ -62,7 +66,6 @@ async def upload_rfp(
             status_code=415,
             detail="Only PDF and DOCX files are accepted.",
         )
-
 
     # 3. Read and check size
     max_bytes = settings.max_upload_mb * 1024 * 1024
@@ -122,5 +125,3 @@ async def analyze_rfp(
             f"{draft_summary.get('flagged', 0)} flagged to department owners."
         )
     )
-
-

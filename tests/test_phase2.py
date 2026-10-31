@@ -6,6 +6,7 @@ tests/test_phase2.py — Comprehensive tests for Phase 2:
 - Triage & department owner routing (Pricing, Legal, Delivery)
 - API endpoint integration: upload, analyze, list questions, format rules
 """
+
 import os
 
 import pytest
@@ -25,6 +26,7 @@ SAMPLE_PDF = "data/sample_rfp/sample_rfp.pdf"
 
 
 # ── Document Parsing Tests ───────────────────────────────────────────────────
+
 
 def test_extract_from_sample_docx():
     assert os.path.exists(SAMPLE_DOCX), f"Missing {SAMPLE_DOCX}"
@@ -56,6 +58,7 @@ def test_extract_from_sample_pdf():
 
 # ── Format Rules Tests ────────────────────────────────────────────────────────
 
+
 def test_extract_format_rules():
     _, text = extract_text_from_file(SAMPLE_DOCX)
     rules = extract_format_rules(text)
@@ -67,6 +70,7 @@ def test_extract_format_rules():
 
 
 # ── Triage & Owner Flagging Tests ─────────────────────────────────────────────
+
 
 def test_triage_commercial_routed_to_pricing():
     text = "Provide total cost of ownership (TCO) for a 5-year engagement including implementation fees."
@@ -102,11 +106,10 @@ def test_triage_shariah_pending_no_owner():
 
 # ── Full Analysis Pipeline API Test ──────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_full_rfp_analysis_api_flow():
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         # 1. Create a session
         sess_resp = await client.post("/sessions", json={"name": "Al-Baraka Test RFP"})
         assert sess_resp.status_code == 201
@@ -118,7 +121,13 @@ async def test_full_rfp_analysis_api_flow():
 
         upload_resp = await client.post(
             f"/sessions/{session_id}/rfp",
-            files={"file": ("sample_rfp.docx", docx_bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+            files={
+                "file": (
+                    "sample_rfp.docx",
+                    docx_bytes,
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                )
+            },
         )
         assert upload_resp.status_code == 201
 
@@ -128,7 +137,6 @@ async def test_full_rfp_analysis_api_flow():
         msg = analyze_resp.json()["message"]
         assert "questions" in msg.lower()
         assert "complete" in msg.lower() or "extracted" in msg.lower()
-
 
         # 4. Check questions list
         q_resp = await client.get(f"/sessions/{session_id}/questions")

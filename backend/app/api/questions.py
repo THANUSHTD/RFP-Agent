@@ -1,8 +1,9 @@
-﻿"""
+"""
 api/questions.py — Question and answer endpoints (Phase 0 stubs).
 
 Full implementation comes in Phase 3 once the analysis graph populates the DB.
 """
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,9 +17,7 @@ router = APIRouter(tags=["questions"])
 
 
 @router.get("/sessions/{session_id}/questions", response_model=list[QuestionOut])
-async def list_questions(
-    session_id: int, db: AsyncSession = Depends(get_db)
-) -> list[QuestionOut]:
+async def list_questions(session_id: int, db: AsyncSession = Depends(get_db)) -> list[QuestionOut]:
     """Return all questions for a session."""
     session = await db.get(SessionModel, session_id)
     if session is None:
@@ -97,9 +96,10 @@ async def approve_answer(
     if answer is None:
         raise HTTPException(status_code=404, detail="No answer found for this question")
 
-    from datetime import datetime
+    from datetime import UTC, datetime
+
     answer.status = "approved"
-    answer.approved_at = datetime.utcnow()
+    answer.approved_at = datetime.now(UTC)
 
     # Mark the question approved too
     question = await db.get(Question, question_id)

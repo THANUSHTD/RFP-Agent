@@ -1,6 +1,7 @@
 """
 api/kb.py — Knowledge base management and hybrid search endpoints.
 """
+
 import os
 
 from fastapi import APIRouter, Depends, Query
@@ -30,7 +31,9 @@ async def list_kb_documents(db: AsyncSession = Depends(get_db)) -> list[KBDocume
 
 @router.post("/ingest", response_model=OKResponse)
 async def ingest_kb(
-    kb_path: str = Query(default="data/kb_sample", description="Relative or absolute path to KB directory"),
+    kb_path: str = Query(
+        default="data/kb_sample", description="Relative or absolute path to KB directory"
+    ),
     db: AsyncSession = Depends(get_db),
 ) -> OKResponse:
     """Trigger ingestion of synthetic knowledge base documents into Chroma and SQLite."""
@@ -52,4 +55,3 @@ async def search_kb(body: KBSearchRequest) -> list[KBChunkResult]:
         product_version=body.product_version,
     )
     return results
-
