@@ -270,3 +270,146 @@ export async function ingestKB() {
     return null;
   }
 }
+
+// ─── Level 2: Compliance / Response Codes ─────────────────────────────────────
+export async function getComplianceMatrix(sessionId) {
+  try {
+    const res = await fetch(`${BASE_URL}/sessions/${sessionId}/compliance-matrix`);
+    await handleResponse(res);
+    return await res.json();
+  } catch (e) {
+    console.error('getComplianceMatrix error:', e);
+    return null;
+  }
+}
+
+export async function getResponseCodes(sessionId) {
+  try {
+    const res = await fetch(`${BASE_URL}/sessions/${sessionId}/response-codes`);
+    await handleResponse(res);
+    return await res.json();
+  } catch (e) {
+    console.error('getResponseCodes error:', e);
+    return [];
+  }
+}
+
+export async function getResponseCode(sessionId, questionId) {
+  try {
+    const res = await fetch(`${BASE_URL}/sessions/${sessionId}/questions/${questionId}/response-code`);
+    await handleResponse(res);
+    return await res.json();
+  } catch (e) {
+    console.error('getResponseCode error:', e);
+    return null;
+  }
+}
+
+export async function putResponseCode(sessionId, questionId, body) {
+  try {
+    const res = await fetch(`${BASE_URL}/sessions/${sessionId}/questions/${questionId}/response-code`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    await handleResponse(res);
+    return await res.json();
+  } catch (e) {
+    console.error('putResponseCode error:', e);
+    return null;
+  }
+}
+
+// ─── Level 2: Gap Analysis ────────────────────────────────────────────────────
+export async function getGaps(sessionId) {
+  try {
+    const res = await fetch(`${BASE_URL}/sessions/${sessionId}/gaps`);
+    await handleResponse(res);
+    return await res.json();
+  } catch (e) {
+    console.error('getGaps error:', e);
+    return { gaps: [], total: 0, high_severity: 0, confirmed_gaps: 0, knowledge_gaps: 0 };
+  }
+}
+
+export async function regenerateGaps(sessionId) {
+  try {
+    const res = await fetch(`${BASE_URL}/sessions/${sessionId}/gaps/regenerate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ force: true }),
+    });
+    await handleResponse(res);
+    return await res.json();
+  } catch (e) {
+    console.error('regenerateGaps error:', e);
+    return null;
+  }
+}
+
+// ─── Level 2: Response Validation ─────────────────────────────────────────────
+export async function getValidation(sessionId) {
+  try {
+    const res = await fetch(`${BASE_URL}/sessions/${sessionId}/validation`);
+    await handleResponse(res);
+    return await res.json();
+  } catch (e) {
+    console.error('getValidation error:', e);
+    return { issues: [], total: 0, high_severity: 0, medium_severity: 0 };
+  }
+}
+
+export async function regenerateValidation(sessionId) {
+  try {
+    const res = await fetch(`${BASE_URL}/sessions/${sessionId}/validation/regenerate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ force: true }),
+    });
+    await handleResponse(res);
+    return await res.json();
+  } catch (e) {
+    console.error('regenerateValidation error:', e);
+    return null;
+  }
+}
+
+// ─── Level 2: Submission Checklist ────────────────────────────────────────────
+export async function getChecklist(sessionId) {
+  try {
+    const res = await fetch(`${BASE_URL}/sessions/${sessionId}/checklist`);
+    await handleResponse(res);
+    return await res.json();
+  } catch (e) {
+    console.error('getChecklist error:', e);
+    return { items: [], total: 0, done: 0, pending: 0, percent: 0 };
+  }
+}
+
+export async function regenerateChecklist(sessionId) {
+  try {
+    const res = await fetch(`${BASE_URL}/sessions/${sessionId}/checklist/regenerate`, {
+      method: 'POST',
+    });
+    await handleResponse(res);
+    return await res.json();
+  } catch (e) {
+    console.error('regenerateChecklist error:', e);
+    return null;
+  }
+}
+
+export async function putChecklistItem(sessionId, itemKey, body) {
+  try {
+    const res = await fetch(`${BASE_URL}/sessions/${sessionId}/checklist/${itemKey}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    await handleResponse(res);
+    return await res.json();
+  } catch (e) {
+    console.error('putChecklistItem error:', e);
+    return null;
+  }
+}

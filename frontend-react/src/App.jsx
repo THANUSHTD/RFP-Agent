@@ -6,6 +6,8 @@ import {
   List,
   ShieldAlert,
   Download,
+  ClipboardList,
+  Search,
 } from 'lucide-react';
 import Sidebar from './components/Sidebar.jsx';
 import ChatTab from './components/tabs/ChatTab.jsx';
@@ -13,10 +15,18 @@ import QuestionsTab from './components/tabs/QuestionsTab.jsx';
 import FormatRulesTab from './components/tabs/FormatRulesTab.jsx';
 import ClarificationsTab from './components/tabs/ClarificationsTab.jsx';
 import ExportTab from './components/tabs/ExportTab.jsx';
+import ComplianceMatrixTab from './components/tabs/ComplianceMatrixTab.jsx';
+import GapAnalysisTab from './components/tabs/GapAnalysisTab.jsx';
+import ResponseValidationTab from './components/tabs/ResponseValidationTab.jsx';
+import SubmissionChecklistTab from './components/tabs/SubmissionChecklistTab.jsx';
 
 const TABS = [
   { key: 'chat', label: 'Chat', Icon: MessageSquare },
   { key: 'questions', label: 'RFP Questions', Icon: List },
+  { key: 'compliance', label: 'Compliance Matrix', Icon: ClipboardList },
+  { key: 'gaps', label: 'Gap Analysis', Icon: Search },
+  { key: 'validation', label: 'Response Validation', Icon: ShieldAlert },
+  { key: 'checklist', label: 'Submission Checklist', Icon: FileText },
   { key: 'format', label: 'Format Rules', Icon: FileText },
   { key: 'clarifications', label: 'Clarifications', Icon: ShieldAlert },
   { key: 'export', label: 'Export', Icon: Download },
@@ -25,6 +35,10 @@ const TABS = [
 const TAB_LABELS = {
   chat: 'Chat',
   questions: 'RFP Questions',
+  compliance: 'Compliance Matrix',
+  gaps: 'Gap Analysis',
+  validation: 'Response Validation',
+  checklist: 'Submission Checklist',
   format: 'Format Rules',
   clarifications: 'Clarifications',
   export: 'Export Response',
@@ -111,6 +125,14 @@ export default function App() {
             <ChatTab sessionId={activeSessionId} />
           ) : activeTab === 'questions' ? (
             <QuestionsTab sessionId={activeSessionId} />
+          ) : activeTab === 'compliance' ? (
+            <ComplianceMatrixTab sessionId={activeSessionId} />
+          ) : activeTab === 'gaps' ? (
+            <GapAnalysisTab sessionId={activeSessionId} />
+          ) : activeTab === 'validation' ? (
+            <ResponseValidationTab sessionId={activeSessionId} />
+          ) : activeTab === 'checklist' ? (
+            <SubmissionChecklistTab sessionId={activeSessionId} />
           ) : activeTab === 'format' ? (
             <FormatRulesTab sessionId={activeSessionId} />
           ) : activeTab === 'clarifications' ? (

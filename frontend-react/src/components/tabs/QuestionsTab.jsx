@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, ChevronDown, ChevronUp, AlertTriangle, Check, Save } from 'lucide-react';
-import { getQuestions, getAnswer, patchAnswer, approveAnswer } from '../../api.js';
+import { getQuestions, getAnswer, patchAnswer, approveAnswer, getResponseCodes, putResponseCode } from '../../api.js';
 import Badge from '../ui/Badge.jsx';
 import ConfidenceBar from '../ui/ConfidenceBar.jsx';
 import CitationList from '../ui/CitationCard.jsx';
+import ResponseCodeBadge from '../ui/ResponseCodeBadge.jsx';
 
 function parseJsonField(val) {
   if (!val) return [];
@@ -49,6 +50,41 @@ export default function QuestionsTab({ sessionId }) {
   const [saving, setSaving] = useState(false);
   const [approving, setApproving] = useState(false);
   const [citationsExpanded, setCitationsExpanded] = useState(false);
+
+  // Response codes (S/C/D/T/N) persisted server-side per session
+  const [responseCodes, setResponseCodes] = useState({});
+  const [codesLoading, setCodesLoading] = useState(false);
+
+  const fetchResponseCodes = useCallback(async () => {
+    if (!sessionId) return;
+    setCodesLoading(true);
+    try {
+      const data = await getResponseCodes(sessionId);
+      const map = {};
+      (Array.isArray(data) ? data : []).forEach((rc) => {
+        map[rc.question_id] = rc.code;
+      });
+      setResponseCodes(map);
+    } catch (e) {
+      console.error('fetchResponseCodes error:', e);
+    } finally {
+      setCodesLoading(false);
+    }
+  }, [sessionId]);
+
+  useEffect(() => {
+    fetchResponseCodes();
+  }, [fetchResponseCodes]);
+
+  const handleResponseCodeChange = async (questionId, code) => {
+    setResponseCodes((prev) => ({ ...prev, [questionId]: code }));
+    await putResponseCode(sessionId, questionId, {
+      code,
+      explanation: '',
+      validated_by_se: false,
+    });
+    await fetchResponseCodes();
+  };
 
   // Filters
   const [filterCategory, setFilterCategory] = useState('');
@@ -218,6 +254,7 @@ export default function QuestionsTab({ sessionId }) {
                     { key: 'owner', label: 'Owner' },
                     { key: 'status', label: 'Status' },
                     { key: 'mandatory', label: 'Mandatory' },
+                    { key: 'response_code', label: 'Response Code' },
                     { key: 'question_text', label: 'Question' },
                   ].map(col => (
                     <th
@@ -261,6 +298,13 @@ export default function QuestionsTab({ sessionId }) {
                         ) : (
                           <span className="text-gray-300 text-xs">—</span>
                         )}
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        <ResponseCodeBadge
+                          code={responseCodes[q.id] || ''}
+                          editable
+                          onChange={(c) => handleResponseCodeChange(q.id, c)}
+                        />
                       </td>
                       <td className="px-3 py-2.5 text-gray-700 max-w-xs">
                         <span className="block truncate" title={q.question_text ?? q.text}>

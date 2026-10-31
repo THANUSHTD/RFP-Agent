@@ -79,6 +79,30 @@ class ClarificationStatus(str, PyEnum):
     resolved = "resolved"
 
 
+class ResponseCode(str, PyEnum):
+    """Customer-defined response codes for the compliance matrix."""
+    standard = "S"           # Standard capability
+    configuration = "C"      # Configuration required
+    development = "D"        # Development required
+    third_party = "T"        # Third-party dependency
+    not_available = "N"      # Not available
+
+
+class GapType(str, PyEnum):
+    functionality = "functionality"
+    integration = "integration"
+    security = "security"
+    documentation = "documentation"
+
+
+class ValidationIssueType(str, PyEnum):
+    unsupported_claim = "unsupported_claim"
+    outdated_info = "outdated_info"
+    contradiction = "contradiction"
+    missing_mandatory = "missing_mandatory"
+    low_confidence = "low_confidence"
+
+
 # ── Tables ───────────────────────────────────────────────────────────────────
 
 
@@ -98,6 +122,10 @@ class Session(Base):
     questions: Mapped[list["Question"]] = relationship(back_populates="session")
     messages: Mapped[list["ChatMessage"]] = relationship(back_populates="session")
     clarifications: Mapped[list["Clarification"]] = relationship(back_populates="session")
+    response_codes: Mapped[list["QuestionResponseCode"]] = relationship(back_populates="session")
+    gaps: Mapped[list["Gap"]] = relationship(back_populates="session")
+    validation_issues: Mapped[list["ValidationIssue"]] = relationship(back_populates="session")
+    checklist_items: Mapped[list["SubmissionChecklist"]] = relationship(back_populates="session")
 
 
 class RFPDocument(Base):
@@ -267,3 +295,85 @@ class LLMCall(Base):
     latency_ms: Mapped[int] = mapped_column(Integer, default=0)
     session_id: Mapped[int | None] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class QuestionResponseCode(Base):
+    """Customer-defined response code (S/C/D/T/N) for a single requirement.
+
+    Codes C, D, T and N require a supporting explanation, estimate, or attachment.
+    """
+
+    __tablename__ = "question_response_codes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("sessions.id"), nullable=False)
+    question_id: Mapped[int] = mapped_column(
+        ForeignKey("questions.id"), nullable=False, unique=True
+    )
+    code: Mapped[str] = mapped_column(String(2), default=ResponseCode.standard)
+    # Required for C / D / T / N codes
+    explanation: Mapped[str] = mapped_column(Text, default="")
+    estimate: Mapped[str | None] = mapped_column(String(255))
+    attachment_ref: Mapped[str | None] = mapped_column(String(512))
+    validated_by_se: Mapped[bool] = mapped_column(Boolean, default=False)
+    requires_explanation: Mapped[bool] = mapped_column(Boolean, default=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+    session: Mapped["Session"] = relationship(back_populates="response_codes")
+
+
+class Gap(Base):
+    """AI-driven gap analysis result for a requirement.
+
+    Distinguishes a confirmed product gap from a knowledge gap and recommends
+    the internal team best placed to resolve it.
+    """
+
+    __tablename__ = "gaps"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("sessions.id"), nullable=False)
+    question_id: Mapped[int] = mapped_column(ForeignKey("questions.id"), nullable=False)
+    gap_type: Mapped[str] = mapped_column(String(30))  # functionality/integration/security/documentation
+    confirmed_gap: Mapped[bool] = mapped_column(Boolean, default=False)
+    severity: Mapped[str] = mapped_column(String(20), default="Medium")  # High/Medium/Low
+    recommended_owner: Mapped[str] = mapped_column(String(30))  # product/engineering/architecture
+    details: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    session: Mapped["Session"] = relationship(back_populates="gaps")
+
+
+class ValidationIssue(Base):
+    """Response validation finding: unsupported claim, outdated info, contradiction, etc."""
+
+    __tablename__ = "validation_issues"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("sessions.id"), nullable=False)
+    question_id: Mapped[int] = mapped_column(ForeignKey("questions.id"), nullable=False)
+    issue_type: Mapped[str] = mapped_column(String(30))
+    detail: Mapped[str] = mapped_column(Text)
+    severity: Mapped[str] = mapped_column(String(20), default="Medium")  # High/Medium/Low
+    resolved: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    session: Mapped["Session"] = relationship(back_populates="validation_issues")
+
+
+class SubmissionChecklist(Base):
+    """Customer-specific submission checklist item for a session."""
+
+    __tablename__ = "submission_checklist"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("sessions.id"), nullable=False)
+    item_key: Mapped[str] = mapped_column(String(100))  # e.g. rfp_uploaded, format_rules_confirmed
+    label: Mapped[str] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending / done
+    done_by: Mapped[str | None] = mapped_column(String(100))
+    done_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+    session: Mapped["Session"] = relationship(back_populates="checklist_items")

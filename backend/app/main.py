@@ -12,9 +12,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api.chat import router as chat_router
+from backend.app.api.checklist import router as checklist_router
 from backend.app.api.clarifications import router as clarifications_router
+from backend.app.api.compliance import router as compliance_router
 from backend.app.api.export import router as export_router
 from backend.app.api.format_rules import router as format_rules_router
+from backend.app.api.gaps import router as gaps_router
+from backend.app.api.validation import router as validation_router
 
 # Import all routers
 from backend.app.api.health import router as health_router
@@ -83,3 +87,7 @@ app.include_router(clarifications_router)
 app.include_router(kb_router)
 app.include_router(export_router)
 app.include_router(format_rules_router)
+app.include_router(compliance_router)
+app.include_router(gaps_router)
+app.include_router(validation_router)
+app.include_router(checklist_router)

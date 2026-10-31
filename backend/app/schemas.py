@@ -232,3 +232,142 @@ class ExportPackageOut(BaseModel):
     total_questions: int
     approved_count: int
     generated_at: str
+
+
+# ── Compliance / Response Codes ───────────────────────────────────────────────
+
+
+class QuestionResponseCodeOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    session_id: int
+    question_id: int
+    code: str
+    explanation: str
+    estimate: str | None
+    attachment_ref: str | None
+    validated_by_se: bool
+    requires_explanation: bool
+    updated_at: datetime
+
+
+class QuestionResponseCodePut(BaseModel):
+    code: str
+    explanation: str | None = None
+    estimate: str | None = None
+    attachment_ref: str | None = None
+    validated_by_se: bool = False
+
+
+class ComplianceMatrixRow(BaseModel):
+    question_id: int
+    number: str
+    text: str
+    category: str
+    mandatory: bool
+    status: str
+    owner: str | None
+    code: str
+    code_label: str
+    confidence: float
+    explanation: str | None
+    requires_explanation: bool
+    compliance: str
+    compliance_class: str
+
+
+class ComplianceMatrixOut(BaseModel):
+    session_id: int
+    total: int
+    coded: int
+    flagged: int
+    not_available: int
+    rows: list[ComplianceMatrixRow]
+
+
+# ── Gap Analysis ──────────────────────────────────────────────────────────────
+
+
+class GapOut(BaseModel):
+    id: int
+    session_id: int
+    question_id: int
+    number: str
+    requirement: str
+    category: str | None
+    mandatory: bool
+    gap_type: str
+    confirmed_gap: bool
+    severity: str
+    recommended_owner: str
+    details: str
+    confidence: float
+    status: str
+    created_at: datetime
+
+
+class GapAnalysisOut(BaseModel):
+    session_id: int
+    total: int
+    high_severity: int
+    confirmed_gaps: int
+    knowledge_gaps: int
+    gaps: list[GapOut]
+
+
+class RegenerateRequest(BaseModel):
+    force: bool = False
+
+
+# ── Response Validation ───────────────────────────────────────────────────────
+
+
+class ValidationIssueOut(BaseModel):
+    id: int
+    session_id: int
+    question_id: int
+    number: str
+    requirement: str
+    issue_type: str
+    detail: str
+    severity: str
+    resolved: bool
+    created_at: datetime
+
+
+class ValidationOut(BaseModel):
+    session_id: int
+    total: int
+    high_severity: int
+    medium_severity: int
+    issues: list[ValidationIssueOut]
+
+
+# ── Submission Checklist ──────────────────────────────────────────────────────
+
+
+class SubmissionChecklistOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    session_id: int
+    item_key: str
+    label: str
+    status: str
+    done_by: str | None
+    done_at: datetime | None
+
+
+class SubmissionChecklistPut(BaseModel):
+    status: str
+    done_by: str | None = None
+
+
+class ChecklistSummary(BaseModel):
+    session_id: int
+    total: int
+    done: int
+    pending: int
+    percent: int
+    items: list[SubmissionChecklistOut]
