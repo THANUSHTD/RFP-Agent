@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #f3f4f6;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Prose styles for markdown in chat */
+.prose p { margin: 0.4em 0; }
+.prose ul { list-style: disc; padding-left: 1.2em; margin: 0.4em 0; }
+.prose ol { list-style: decimal; padding-left: 1.2em; margin: 0.4em 0; }
+.prose li { margin: 0.2em 0; }
+.prose code {
+  background: rgba(0,0,0,0.08);
+  border-radius: 3px;
+  padding: 0.1em 0.3em;
+  font-size: 0.85em;
+}
+.prose pre {
+  background: rgba(0,0,0,0.08);
+  border-radius: 6px;
+  padding: 0.5em 0.8em;
+  overflow-x: auto;
+  margin: 0.4em 0;
+}
+.prose h1, .prose h2, .prose h3 { font-weight: 700; margin: 0.5em 0 0.2em; }
+.prose strong { font-weight: 600; }
+.prose a { color: #2563eb; text-decoration: underline; }
+.prose blockquote {
+  border-left: 3px solid #cbd5e1;
+  padding-left: 0.8em;
+  color: #64748b;
+  margin: 0.4em 0;
+}
+
+/* Textarea resize */
+textarea {
+  resize: vertical;
+}
+
+/* Transition helpers */
+.transition-all { transition: all 0.2s ease; }

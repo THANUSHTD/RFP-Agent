@@ -302,7 +302,9 @@ with tab_questions:
             },
         )
 
-        with st.expander("🔎 Question Inspector & Draft Review", expanded=True):
+        st.divider()
+        with st.container(border=True):
+            st.markdown("### 🔎 Question Inspector & Draft Review")
             q_nums = [q["number"] for q in filtered]
             if q_nums:
                 chosen_num = st.selectbox("Select question to inspect and review draft:", q_nums)
